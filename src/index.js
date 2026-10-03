@@ -43,6 +43,7 @@ function iguais(a, b) {
   return r === 0;
 }
 function validarSenha(s) { if (typeof s !== "string" || s.length < 6) falha("A senha precisa ter pelo menos 6 caracteres."); }
+const limparUsuario = (u) => String(u || "").trim().toLowerCase();
 function validarUsuario(u) {
   if (typeof u !== "string" || !/^[a-zA-Z0-9._-]{3,30}$/.test(u)) falha("Usuário deve ter de 3 a 30 letras, números, ponto, hífen ou sublinhado, sem espaços.");
 }
@@ -92,6 +93,7 @@ async function rotear(req, env, url) {
   // primeiro acesso: cria o administrador
   if (p === "/api/setup" && m === "POST") {
     const b = await corpo(req);
+    b.usuario = limparUsuario(b.usuario);
     validarUsuario(b.usuario); validarSenha(b.senha);
     const nome = String(b.nome || "").trim(); if (!nome) falha("Informe o nome.");
     if ((await contarUsuarios(env)) > 0) falha("O administrador já foi criado. Entre com usuário e senha.", 409);
@@ -103,7 +105,7 @@ async function rotear(req, env, url) {
 
   if (p === "/api/login" && m === "POST") {
     const b = await corpo(req);
-    const u = await env.DB.prepare("SELECT * FROM usuarios WHERE usuario=?").bind(String(b.usuario || "").trim()).first();
+    const u = await env.DB.prepare("SELECT * FROM usuarios WHERE usuario=?").bind(limparUsuario(b.usuario)).first();
     const h = u ? await hashSenha(String(b.senha || ""), u.salt) : await hashSenha("x", "x");
     if (!u || !iguais(h, u.senha_hash)) falha("Usuário ou senha incorretos.", 401);
     if (!u.ativo) falha("Este usuário está desativado. Fale com o administrador.", 403);
@@ -130,13 +132,16 @@ async function rotear(req, env, url) {
 
   /* ----- usuários (admin) ----- */
   if (seg[0] === "usuarios") {
-    const eu = await exigirAdmin(req, env);
+    const eu0 = await exigirLogin(req, env);
+    if (!eu0.admin && !(m === "PUT" && Number(seg[1]) === eu0.id)) falha("Apenas administradores podem fazer isso.", 403);
+    const eu = eu0;
     if (seg.length === 1 && m === "GET") {
       const r = await env.DB.prepare("SELECT id,usuario,nome,admin,ativo,criado FROM usuarios ORDER BY nome COLLATE NOCASE").all();
       return json(r.results.map((x) => ({ ...x, admin: !!x.admin, ativo: !!x.ativo })));
     }
     if (seg.length === 1 && m === "POST") {
       const b = await corpo(req);
+      b.usuario = limparUsuario(b.usuario);
       validarUsuario(b.usuario); validarSenha(b.senha);
       const nome = String(b.nome || "").trim(); if (!nome) falha("Informe o nome.");
       const salt = aleatorio(); const h = await hashSenha(b.senha, salt);
@@ -149,18 +154,21 @@ async function rotear(req, env, url) {
     if (!id) falha("Usuário não encontrado.", 404);
     if (m === "PUT") {
       const b = await corpo(req);
+      if (!eu.admin) { delete b.admin; delete b.ativo; delete b.senha; } // quem não é admin só muda o próprio nome e usuário
       const alvo = await env.DB.prepare("SELECT * FROM usuarios WHERE id=?").bind(id).first();
       if (!alvo) falha("Usuário não encontrado.", 404);
       if (id === eu.id && (b.admin === false || b.ativo === false)) falha("Você não pode tirar o seu próprio acesso de administrador nem se desativar.");
       const sets = [], vals = [];
-      if (typeof b.nome === "string" && b.nome.trim()) { sets.push("nome=?"); vals.push(b.nome.trim()); }
+      if (typeof b.nome === "string") { if (!b.nome.trim()) falha("Informe o nome."); sets.push("nome=?"); vals.push(b.nome.trim()); }
+      if (typeof b.usuario === "string") { const u = limparUsuario(b.usuario); validarUsuario(u); sets.push("usuario=?"); vals.push(u); }
       if (typeof b.admin === "boolean") { sets.push("admin=?"); vals.push(b.admin ? 1 : 0); }
       if (typeof b.ativo === "boolean") { sets.push("ativo=?"); vals.push(b.ativo ? 1 : 0); }
       if (b.senha) { validarSenha(b.senha); const salt = aleatorio(); sets.push("senha_hash=?", "salt=?"); vals.push(await hashSenha(b.senha, salt), salt); }
       if (!sets.length) return json({ ok: true });
       const st = [env.DB.prepare(`UPDATE usuarios SET ${sets.join(",")} WHERE id=?`).bind(...vals, id)];
       if (b.ativo === false || b.senha) st.push(env.DB.prepare("DELETE FROM sessoes WHERE usuario_id=?").bind(id));
-      await env.DB.batch(st);
+      try { await env.DB.batch(st); }
+      catch (e) { if (String(e).includes("UNIQUE")) falha("Já existe um usuário com esse nome de acesso.", 409); throw e; }
       return json({ ok: true });
     }
     if (m === "DELETE") {
