@@ -497,7 +497,6 @@ function renderHome(){
   tile("t-novo","novo","Novo","Começar uma vistoria",null,abrirNovo),
   tile("t-and","relogio","Em andamento","Continuar preenchendo",nA,()=>irLista("andamento")),
   tile("t-ok","concluido","Concluído","Vistorias finalizadas",nC,()=>irLista("concluido"))));
- app.append(h("div",{class:"home-foot"},h("button",{class:"btn ghost",type:"button",onclick:()=>irLista("todos")},"Ver todos os check-lists ("+(listaPronta?lista.length:"–")+")")));
  if(typeof extraHome==="function")extraHome(app);
 }
 
