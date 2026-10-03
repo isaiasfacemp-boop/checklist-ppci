@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "checklist-ppci",
+  "main": "src/index.js",
+  "compatibility_date": "2025-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "checklist_ppci",
+      "database_id": "634315f9-9c0b-4f1c-87af-df4b6ad9db51"
+    }
+  ],
+  "observability": { "enabled": true }
+}
