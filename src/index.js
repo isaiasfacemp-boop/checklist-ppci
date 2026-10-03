@@ -64,7 +64,8 @@ async function usuarioAtual(req, env) {
     "SELECT u.id,u.usuario,u.nome,u.admin,u.ativo FROM sessoes s JOIN usuarios u ON u.id=s.usuario_id WHERE s.token=? AND s.expira>?"
   ).bind(token, agora()).first();
   if (!u || !u.ativo) return null;
-  return { id: u.id, usuario: u.usuario, nome: u.nome, admin: !!u.admin };
+  const pri = await env.DB.prepare("SELECT MIN(id) id FROM usuarios WHERE admin=1").first();
+  return { id: u.id, usuario: u.usuario, nome: u.nome, admin: !!u.admin, principal: !!u.admin && pri && pri.id === u.id };
 }
 async function exigirLogin(req, env) { const u = await usuarioAtual(req, env); if (!u) falha("Sessão expirada. Entre novamente.", 401); return u; }
 async function exigirAdmin(req, env) { const u = await exigirLogin(req, env); if (!u.admin) falha("Apenas administradores podem fazer isso.", 403); return u; }
