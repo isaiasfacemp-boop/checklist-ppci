@@ -1031,7 +1031,7 @@ function campoNome(inp){
 /* ---------- barra do usuário (tela inicial) ---------- */
 function barraUsuario(app){
  if(!usuario)return;
- const sair=h("button",{class:"btn ghost",type:"button",onclick:async()=>{await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}usuario=null;lista=[];listaPronta=false;view="login";render();}},"Sair");
+ const sair=h("button",{class:"btn ghost",type:"button",onclick:async()=>{await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");}catch(e){}usuario=null;lista=[];listaPronta=false;view="login";render();}},"Sair");
  app.append(h("div",{class:"userbar"},
   h("span",{},"Olá, ",h("strong",{},usuario.nome),usuario.admin?h("span",{class:"tag-adm"},"admin"):null),
   h("div",{class:"userbar-bt"},
@@ -1065,13 +1065,13 @@ function telaAuth(titulo,sub,campos,botao,acao){
 function renderLogin(){
  telaAuth("Entrar","Use o usuário e a senha que o administrador cadastrou.",
   [["l_usuario","Usuário","text",{autocapitalize:"none",autocomplete:"username"}],["l_senha","Senha","password",{autocomplete:"current-password"}]],"Entrar",
-  async v=>{await api("/api/login",{method:"POST",body:JSON.stringify({usuario:v.l_usuario,senha:v.l_senha})});await iniciarSessao();});
+  async v=>{await api("/api/login",{method:"POST",body:JSON.stringify({usuario:v.l_usuario,senha:v.l_senha})});marcarAberto();await iniciarSessao();});
 }
 function renderSetup(){
  telaAuth("Primeiro acesso","Crie o usuário administrador. Depois ele cadastra os vistoriadores em Usuários.",
   [["s_nome","Seu nome"],["s_usuario","Usuário de acesso","text",{autocapitalize:"none",placeholder:"ex.: ISAIAS"}],["s_senha","Senha (mínimo 6 caracteres)","password",{autocomplete:"new-password"}],["s_senha2","Repita a senha","password",{autocomplete:"new-password"}]],"Criar administrador",
   async v=>{if(v.s_senha!==v.s_senha2)throw new Error("As senhas não são iguais.");
-   await api("/api/setup",{method:"POST",body:JSON.stringify({nome:v.s_nome.trim(),usuario:v.s_usuario.trim(),senha:v.s_senha})});await iniciarSessao();});
+   await api("/api/setup",{method:"POST",body:JSON.stringify({nome:v.s_nome.trim(),usuario:v.s_usuario.trim(),senha:v.s_senha})});marcarAberto();await iniciarSessao();});
 }
 
 /* ---------- trocar senha ---------- */
@@ -1167,6 +1167,7 @@ async function renderUsuarios(){
 }
 
 /* ---------- inicialização ---------- */
+function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}}
 async function iniciarSessao(){
  let e;try{e=await api("/api/estado");}catch(er){
   const app=$("#app");app.innerHTML="";
@@ -1174,6 +1175,9 @@ async function iniciarSessao(){
    h("button",{class:"btn primary",onclick:iniciarSessao},"Tentar de novo")));return;}
  if(e.precisaSetup){view="setup";render();return;}
  if(!e.usuario){view="login";render();return;}
+ // app foi fechado e aberto de novo (a marca da aba sumiu): encerra a sessão e pede login
+ let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1";}catch(er){aberto=true;}
+ if(!aberto){try{await api("/api/logout",{method:"POST"});}catch(er){}view="login";render();return;}
  usuario=e.usuario;userId=String(usuario.id);
  view="home";listaPronta=false;render();recarregar(true);
 }

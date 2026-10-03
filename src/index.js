@@ -1,7 +1,7 @@
 // Check-List de Cadastro PPCI — API (Cloudflare Worker + D1)
 // Rotas em /api/*; o resto é servido de ./public (index.html).
 
-const SESSAO_DIAS = 30;
+const SESSAO_HORAS = 12; // sessão curta: ao fechar o app, pede login de novo
 const PBKDF2_ITER = 100000;
 const FOTO_MAX = 1_900_000; // limite de linha do D1 é 2 MB
 
@@ -54,7 +54,8 @@ function lerCookie(req, nome) {
   for (const p of c.split(/;\s*/)) { const i = p.indexOf("="); if (i > 0 && p.slice(0, i) === nome) return decodeURIComponent(p.slice(i + 1)); }
   return null;
 }
-const cookieSessao = (token, maxAge) => `sessao=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+// sem Max-Age = cookie de sessão (o navegador apaga ao fechar)
+const cookieSessao = (token, maxAge) => `sessao=${token}; Path=/; HttpOnly; Secure; SameSite=Lax` + (maxAge === undefined ? "" : `; Max-Age=${maxAge}`);
 
 async function usuarioAtual(req, env) {
   const token = lerCookie(req, "sessao");
@@ -72,7 +73,7 @@ async function criarSessao(env, usuarioId) {
   const token = aleatorio(32);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM sessoes WHERE expira<?").bind(agora()),
-    env.DB.prepare("INSERT INTO sessoes (token,usuario_id,expira) VALUES (?,?,?)").bind(token, usuarioId, agora() + SESSAO_DIAS * 864e5),
+    env.DB.prepare("INSERT INTO sessoes (token,usuario_id,expira) VALUES (?,?,?)").bind(token, usuarioId, agora() + SESSAO_HORAS * 36e5),
   ]);
   return token;
 }
@@ -100,7 +101,7 @@ async function rotear(req, env, url) {
     const salt = aleatorio(); const h = await hashSenha(b.senha, salt);
     const r = await env.DB.prepare("INSERT INTO usuarios (usuario,nome,senha_hash,salt,admin,ativo,criado) VALUES (?,?,?,?,1,1,?)").bind(b.usuario.trim(), nome, h, salt, agora()).run();
     const token = await criarSessao(env, r.meta.last_row_id);
-    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token, SESSAO_DIAS * 86400) });
+    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token) });
   }
 
   if (p === "/api/login" && m === "POST") {
@@ -110,7 +111,7 @@ async function rotear(req, env, url) {
     if (!u || !iguais(h, u.senha_hash)) falha("Usuário ou senha incorretos.", 401);
     if (!u.ativo) falha("Este usuário está desativado. Fale com o administrador.", 403);
     const token = await criarSessao(env, u.id);
-    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token, SESSAO_DIAS * 86400) });
+    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token) });
   }
 
   if (p === "/api/logout" && m === "POST") {
