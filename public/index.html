@@ -202,6 +202,8 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .rpill[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
 .rpill.rmais{border-style:dashed;color:var(--muted);font-weight:500}
 .routro{max-width:320px}
+.rbusca{max-width:360px}
+.rvazio{font-size:13px;color:var(--muted);align-self:center}
 .f-responsavel{display:flex;flex-direction:column;gap:8px}
 .rlab{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .rlab em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400}
@@ -637,9 +639,12 @@ function autoAssinaturaCad(c){
  if(!a.nome||a.auto){a.nome=pri;a.auto=!!pri;const f=document.getElementById("f_ass_cad");if(f)f.value=pri;}
 }
 let repintarResp=null;
+const PERMITE_OUTRO_NOME=false; // na versão com servidor: só nomes cadastrados pelo admin
 function campoResponsaveis(c,lab){
  const lst=respLista(c);
  const pills=h("div",{class:"rpills",role:"group","aria-label":lab});
+ const busca=h("input",{type:"search",id:"f_resp_busca",placeholder:"Buscar nome cadastrado",autocomplete:"off",class:"rbusca"});
+ busca.addEventListener("input",()=>pintar());
  const outroIn=h("input",{type:"text",id:"f_responsavel",placeholder:"Nome e Enter",hidden:true,class:"routro"});
  const sync=()=>{c.responsavel=lst.join(", ");autoAssinaturaCad(c);agendarSalvar();pintar();};
  const add=n=>{n=titulo(String(n||"").trim());if(!n)return;if(!lst.some(x=>normTxt(x)===normTxt(n)))lst.push(n);outroIn.value="";outroIn.hidden=true;sync();};
@@ -647,20 +652,27 @@ function campoResponsaveis(c,lab){
   pills.innerHTML="";
   const base=RESPONSAVEIS.length?RESPONSAVEIS:[...new Set(lista.flatMap(x=>respLista(Object.assign({},x))))];
   const todos=[...base];lst.forEach(n=>{if(!todos.some(x=>normTxt(x)===normTxt(n)))todos.push(n);});
+  const q=normTxt(busca.value);
+  busca.hidden=todos.length===0;
+  let vis=0;
   todos.forEach(n=>{
    const i=lst.findIndex(x=>normTxt(x)===normTxt(n));
+   if(q&&i<0&&!normTxt(n).includes(q))return;vis++;
    pills.append(h("button",{type:"button",class:"rpill","aria-pressed":i>=0?"true":"false",
      title:i===0?"1º responsável: vai para a assinatura":"",onclick:()=>{const k=lst.findIndex(x=>normTxt(x)===normTxt(n));if(k>=0)lst.splice(k,1);else lst.push(n);sync();}},
     i>=0?h("b",{},(i+1)+"º"):null,n));
   });
-  pills.append(h("button",{type:"button",class:"rpill rmais",onclick:()=>{outroIn.hidden=false;outroIn.focus();}},"+ Outro nome"));
+  if(q&&!todos.some(n=>normTxt(n).includes(q)))pills.append(h("span",{class:"rvazio"},"Nenhum nome cadastrado com “"+busca.value+"”."));
+  if(!todos.length&&!PERMITE_OUTRO_NOME)pills.append(h("span",{class:"rvazio"},"Nenhum responsável cadastrado. O administrador cadastra em Usuários → Responsáveis pelo cadastro."));
+  if(PERMITE_OUTRO_NOME)pills.append(h("button",{type:"button",class:"rpill rmais",onclick:()=>{outroIn.hidden=false;outroIn.focus();}},"+ Outro nome"));
  };
  outroIn.addEventListener("input",()=>{const p=outroIn.selectionStart;outroIn.value=titulo(outroIn.value);try{outroIn.setSelectionRange(p,p);}catch(e){}});
  outroIn.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();add(outroIn.value);}else if(e.key==="Escape"){outroIn.value="";outroIn.hidden=true;}});
  outroIn.addEventListener("blur",()=>setTimeout(()=>{if(outroIn.value.trim())add(outroIn.value);else outroIn.hidden=true;},150));
  repintarResp=pintar;
  pintar();
- return h("div",{class:"f f-responsavel"},h("span",{class:"rlab"},lab,h("em",{}," · toque para escolher, pode marcar mais de um")),pills,outroIn);
+ busca.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();const f=pills.querySelector('.rpill[aria-pressed="false"]:not(.rmais)');if(f&&busca.value.trim()){f.click();busca.value="";pintar();}}});
+ return h("div",{class:"f f-responsavel"},h("span",{class:"rlab"},lab,h("em",{}," · toque para escolher, pode marcar mais de um")),busca,pills,outroIn);
 }
 
 function campo(def,obj,onchg){
