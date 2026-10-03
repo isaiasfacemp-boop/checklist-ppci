@@ -653,7 +653,7 @@ function campoResponsaveis(c,lab){
   const base=RESPONSAVEIS.length?RESPONSAVEIS:[...new Set(lista.flatMap(x=>respLista(Object.assign({},x))))];
   const todos=[...base];lst.forEach(n=>{if(!todos.some(x=>normTxt(x)===normTxt(n)))todos.push(n);});
   const q=normTxt(busca.value);
-  busca.hidden=todos.length===0;
+  busca.hidden=true; // sem busca: todos os nomes cadastrados aparecem direto
   let vis=0;
   todos.forEach(n=>{
    const i=lst.findIndex(x=>normTxt(x)===normTxt(n));
@@ -672,7 +672,7 @@ function campoResponsaveis(c,lab){
  repintarResp=pintar;
  pintar();
  busca.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();const f=pills.querySelector('.rpill[aria-pressed="false"]:not(.rmais)');if(f&&busca.value.trim()){f.click();busca.value="";pintar();}}});
- return h("div",{class:"f f-responsavel"},h("span",{class:"rlab"},lab,h("em",{}," · toque para escolher, pode marcar mais de um")),busca,pills,outroIn);
+ return h("div",{class:"f f-responsavel"},h("span",{class:"rlab"},lab,h("em",{}," · toque para escolher, pode marcar mais de um")),pills,outroIn);
 }
 
 function campo(def,obj,onchg){
