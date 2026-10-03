@@ -196,12 +196,15 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .addr{grid-column:1/-1;display:grid;gap:12px;grid-template-columns:minmax(0,1fr) 96px}
 .addr .f-cidade{grid-column:1/-1}
 @media (min-width:640px){.addr{grid-template-columns:minmax(0,2fr) 100px minmax(0,1.3fr)}.addr .f-cidade{grid-column:auto}}
-.rchips{display:flex;flex-wrap:wrap;gap:6px}
-.rchips:empty{display:none}
-.rchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 12px;font-size:14px}
-.rchip.pri{border-color:var(--accent)}
-.rchip small{font-family:var(--mono);font-size:10px;color:var(--accent)}
-.rchip button{border:0;background:var(--sunken);border-radius:999px;width:26px;height:26px;display:grid;place-items:center;font-size:16px;line-height:1;color:var(--muted)}
+.rpills{display:flex;flex-wrap:wrap;gap:8px}
+.rpill{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;display:inline-flex;gap:6px;align-items:center;min-height:40px}
+.rpill b{font-family:var(--mono);font-weight:500;font-size:11px}
+.rpill[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.rpill.rmais{border-style:dashed;color:var(--muted);font-weight:500}
+.routro{max-width:320px}
+.f-responsavel{display:flex;flex-direction:column;gap:8px}
+.rlab{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rlab em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400}
 .f-responsavel{grid-column:1/-1}
 .cep-hint{font-size:12px;color:var(--muted);min-height:1em}
 .cep-hint.ok{color:var(--ok)}
@@ -633,24 +636,31 @@ function autoAssinaturaCad(c){
  const a=c.assin.cad=c.assin.cad||{nome:"",img:""};const pri=respLista(c)[0]||"";
  if(!a.nome||a.auto){a.nome=pri;a.auto=!!pri;const f=document.getElementById("f_ass_cad");if(f)f.value=pri;}
 }
+let repintarResp=null;
 function campoResponsaveis(c,lab){
  const lst=respLista(c);
- const chips=h("div",{class:"rchips"});
- const inp=h("input",{type:"text",id:"f_responsavel",placeholder:RESPONSAVEIS.length?"Toque para escolher ou digite um nome":"Digite o nome e toque Enter"});
+ const pills=h("div",{class:"rpills",role:"group","aria-label":lab});
+ const outroIn=h("input",{type:"text",id:"f_responsavel",placeholder:"Nome e Enter",hidden:true,class:"routro"});
  const sync=()=>{c.responsavel=lst.join(", ");autoAssinaturaCad(c);agendarSalvar();pintar();};
- const add=n=>{n=titulo(String(n||"").trim());if(!n)return;if(!lst.some(x=>normTxt(x)===normTxt(n)))lst.push(n);inp.value="";sync();};
- const pintar=()=>{chips.innerHTML="";lst.forEach((n,i)=>chips.append(h("span",{class:"rchip"+(i===0?" pri":"")},
-   i===0?h("small",{},"1º"):null,n,h("button",{type:"button","aria-label":"Remover "+n,onclick:e=>{e.preventDefault();e.stopPropagation();lst.splice(i,1);sync();}},"×"))));};
- inp.addEventListener("input",()=>{const p=inp.selectionStart;inp.value=titulo(inp.value);try{inp.setSelectionRange(p,p);}catch(e){}});
- inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&inp.value.trim()){e.preventDefault();e.stopImmediatePropagation();add(inp.value);}});
- inp.addEventListener("blur",()=>setTimeout(()=>{if(inp.value.trim()&&document.activeElement!==inp)add(inp.value);},200));
- const lbl=h("label",{class:"f f-responsavel"},h("span",{},lab),chips,inp);
- setTimeout(()=>autocompletar(inp,q=>{
-   const pool=RESPONSAVEIS.length?RESPONSAVEIS:[...new Set(lista.flatMap(x=>respLista(Object.assign({},x))))];
-   return pool.filter(n=>!lst.some(x=>normTxt(x)===normTxt(n))&&(!q||normTxt(n).includes(q))).slice(0,10).map(v=>({v}));
-  },it=>add(it.v)),0);
+ const add=n=>{n=titulo(String(n||"").trim());if(!n)return;if(!lst.some(x=>normTxt(x)===normTxt(n)))lst.push(n);outroIn.value="";outroIn.hidden=true;sync();};
+ const pintar=()=>{
+  pills.innerHTML="";
+  const base=RESPONSAVEIS.length?RESPONSAVEIS:[...new Set(lista.flatMap(x=>respLista(Object.assign({},x))))];
+  const todos=[...base];lst.forEach(n=>{if(!todos.some(x=>normTxt(x)===normTxt(n)))todos.push(n);});
+  todos.forEach(n=>{
+   const i=lst.findIndex(x=>normTxt(x)===normTxt(n));
+   pills.append(h("button",{type:"button",class:"rpill","aria-pressed":i>=0?"true":"false",
+     title:i===0?"1º responsável: vai para a assinatura":"",onclick:()=>{const k=lst.findIndex(x=>normTxt(x)===normTxt(n));if(k>=0)lst.splice(k,1);else lst.push(n);sync();}},
+    i>=0?h("b",{},(i+1)+"º"):null,n));
+  });
+  pills.append(h("button",{type:"button",class:"rpill rmais",onclick:()=>{outroIn.hidden=false;outroIn.focus();}},"+ Outro nome"));
+ };
+ outroIn.addEventListener("input",()=>{const p=outroIn.selectionStart;outroIn.value=titulo(outroIn.value);try{outroIn.setSelectionRange(p,p);}catch(e){}});
+ outroIn.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();add(outroIn.value);}else if(e.key==="Escape"){outroIn.value="";outroIn.hidden=true;}});
+ outroIn.addEventListener("blur",()=>setTimeout(()=>{if(outroIn.value.trim())add(outroIn.value);else outroIn.hidden=true;},150));
+ repintarResp=pintar;
  pintar();
- return lbl;
+ return h("div",{class:"f f-responsavel"},h("span",{class:"rlab"},lab,h("em",{}," · toque para escolher, pode marcar mais de um")),pills,outroIn);
 }
 
 function campo(def,obj,onchg){
@@ -744,7 +754,8 @@ function renderEditor(){
   const id=sec.id.slice(4);const k=navBtns.findIndex(x=>x[0]===id);
   const ant=navBtns[k-1],prox=navBtns[k+1];
   sec.append(h("div",{class:"stepnav"},
-   ant?h("button",{class:"btn",type:"button",onclick:()=>mostrarAba(ant[0])},ico("back"),h("span",{},ant[1])):h("span"),
+   ant?h("button",{class:"btn",type:"button",onclick:()=>mostrarAba(ant[0])},ico("back"),h("span",{},ant[1]))
+      :h("button",{class:"btn",type:"button",onclick:async()=>{await salvarAgora();cur=null;view=voltar;render();if(typeof recarregar==="function")recarregar();window.scrollTo(0,0);}},ico("back"),h("span",{},voltar==="list"?"Voltar à lista":"Tela inicial")),
    prox?h("button",{class:"btn primary",type:"button",onclick:()=>mostrarAba(prox[0])},h("span",{},prox[1]),(()=>{const x=ico("back");x.style.transform="scaleX(-1)";return x;})()):h("span")));
  });
  mostrarAba(aba,true);
@@ -1253,7 +1264,7 @@ async function renderUsuarios(){
 }
 
 /* ---------- inicialização ---------- */
-async function carregarResponsaveis(){try{RESPONSAVEIS=(await api("/api/responsaveis")).map(x=>x.nome);}catch(e){}}
+async function carregarResponsaveis(){try{RESPONSAVEIS=(await api("/api/responsaveis")).map(x=>x.nome);if(view==="edit"&&repintarResp)repintarResp();}catch(e){}}
 function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}}
 async function iniciarSessao(){
  let e;try{e=await api("/api/estado");}catch(er){
