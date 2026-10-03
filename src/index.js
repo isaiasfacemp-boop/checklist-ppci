@@ -43,7 +43,7 @@ function iguais(a, b) {
   return r === 0;
 }
 function validarSenha(s) { if (typeof s !== "string" || s.length < 6) falha("A senha precisa ter pelo menos 6 caracteres."); }
-const limparUsuario = (u) => String(u || "").trim().toLowerCase();
+const limparUsuario = (u) => String(u || "").trim().toUpperCase(); // usuário sempre em caixa alta
 function validarUsuario(u) {
   if (typeof u !== "string" || !/^[a-zA-Z0-9._-]{3,30}$/.test(u)) falha("Usuário deve ter de 3 a 30 letras, números, ponto, hífen ou sublinhado, sem espaços.");
 }

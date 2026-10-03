@@ -1020,7 +1020,7 @@ downloads={
 
 function campoUsuario(inp){
  inp.setAttribute("autocapitalize","none");inp.setAttribute("autocorrect","off");inp.setAttribute("spellcheck","false");
- inp.addEventListener("input",()=>{const p=inp.selectionStart;const v=inp.value.toLowerCase().replace(/\s+/g,"");if(v!==inp.value){inp.value=v;try{inp.setSelectionRange(p,p);}catch(e){}}});
+ inp.addEventListener("input",()=>{const p=inp.selectionStart;const v=inp.value.toUpperCase().replace(/\s+/g,"");if(v!==inp.value){inp.value=v;try{inp.setSelectionRange(p,p);}catch(e){}}});
  return inp;
 }
 function campoNome(inp){
@@ -1069,7 +1069,7 @@ function renderLogin(){
 }
 function renderSetup(){
  telaAuth("Primeiro acesso","Crie o usuário administrador. Depois ele cadastra os vistoriadores em Usuários.",
-  [["s_nome","Seu nome"],["s_usuario","Usuário de acesso","text",{autocapitalize:"none",placeholder:"ex.: isaias"}],["s_senha","Senha (mínimo 6 caracteres)","password",{autocomplete:"new-password"}],["s_senha2","Repita a senha","password",{autocomplete:"new-password"}]],"Criar administrador",
+  [["s_nome","Seu nome"],["s_usuario","Usuário de acesso","text",{autocapitalize:"none",placeholder:"ex.: ISAIAS"}],["s_senha","Senha (mínimo 6 caracteres)","password",{autocomplete:"new-password"}],["s_senha2","Repita a senha","password",{autocomplete:"new-password"}]],"Criar administrador",
   async v=>{if(v.s_senha!==v.s_senha2)throw new Error("As senhas não são iguais.");
    await api("/api/setup",{method:"POST",body:JSON.stringify({nome:v.s_nome.trim(),usuario:v.s_usuario.trim(),senha:v.s_senha})});await iniciarSessao();});
 }
@@ -1105,7 +1105,7 @@ async function renderUsuarios(){
  // novo usuário
  const erro=h("div",{class:"erro",role:"alert"});
  const nNome=campoNome(h("input",{id:"u_nome",type:"text",required:true}));
- const nUser=campoUsuario(h("input",{id:"u_usuario",type:"text",required:true,placeholder:"ex.: joao.silva"}));
+ const nUser=campoUsuario(h("input",{id:"u_usuario",type:"text",required:true,placeholder:"ex.: JOAO.SILVA"}));
  const nSenha=h("input",{id:"u_senha",type:"text",required:true,placeholder:"mínimo 6 caracteres"});
  const nAdm=h("input",{id:"u_admin",type:"checkbox",style:"width:auto"});
  const bt=h("button",{class:"btn primary",type:"submit"},ico("plus"),"Cadastrar usuário");
