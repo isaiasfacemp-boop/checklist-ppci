@@ -246,6 +246,16 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .cam b{position:absolute;top:-6px;right:-6px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:10px;border-radius:999px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px}
 .cam b:empty{display:none}
 .item .obs{grid-column:1/-1;padding:8px 10px;font-size:14px;background:var(--sunken)}
+.obs-extras{grid-column:1/-1;display:grid;gap:6px}
+.obs-extras:empty{display:none}
+.obs-linha{display:flex;gap:6px}
+.obs-linha .obs{flex:1}
+.obs-del{flex:none;width:38px;border:1px solid var(--line);background:var(--surface);border-radius:8px;color:var(--muted);font-size:18px;line-height:1}
+.obs-mais{grid-column:1/-1;justify-self:start;border:0;background:none;color:var(--accent);font-weight:600;font-size:13px;padding:2px 0}
+.custom-itens .item{background:linear-gradient(90deg,var(--accent-soft),transparent 60%);padding-left:10px;padding-right:2px;border-radius:6px}
+.add-item{display:flex;gap:8px;padding-top:14px;flex-wrap:wrap}
+.add-item input{flex:1 1 220px}
+.add-item .btn{min-height:44px}
 .thumbs{grid-column:1/-1;display:flex;gap:8px;overflow-x:auto}
 .thumbs:empty{display:none}
 .thumbs button{flex:none;width:72px;height:72px;border-radius:8px;border:1px solid var(--line);padding:0;overflow:hidden;background:var(--sunken)}
@@ -744,6 +754,20 @@ function renderEditor(){
  SECOES.forEach(s=>{
   const sec=h("section",{class:"sec",id:"sec_"+s.id},h("div",{class:"sec-h"},h("h2",{},s.titulo,s.novo?h("span",{class:"tag-new"},"novo"):null),h("span",{class:"cnt","data-scnt":s.id})));
   s.itens.forEach(it=>sec.append(itemRow(it,s)));
+  // itens adicionados nesta vistoria
+  c.custom=c.custom||{};
+  const boxCustom=h("div",{class:"custom-itens"});
+  const pintarCustom=()=>{boxCustom.innerHTML="";(c.custom[s.id]||[]).forEach((ci,idx)=>{
+   const itc={id:ci.id,label:ci.label,hint:"",sub:false,custom:true,remover:()=>{c.custom[s.id].splice(idx,1);delete c.itens[ci.id];agendarSalvar();pintarCustom();}};
+   boxCustom.append(itemRow(itc,s));});};
+  pintarCustom();
+  const novoNome=h("input",{type:"text",placeholder:"Nome do item (ex.: Mezanino, Casa de bombas)"});
+  novoNome.addEventListener("input",()=>{const p=novoNome.selectionStart;novoNome.value=titulo(novoNome.value);try{novoNome.setSelectionRange(p,p);}catch(e){}});
+  const addItem=()=>{const nm=novoNome.value.trim();if(!nm){novoNome.focus();return;}
+   (c.custom[s.id]=c.custom[s.id]||[]).push({id:"x_"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),label:nm});
+   novoNome.value="";agendarSalvar();pintarCustom();};
+  novoNome.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();addItem();}});
+  sec.append(boxCustom,h("div",{class:"add-item"},novoNome,h("button",{type:"button",class:"btn",onclick:addItem},ico("plus"),"Adicionar item")));
   app.append(sec);
  });
 
@@ -826,7 +850,18 @@ function itemRow(it,s){
  };
  const obs=h("input",{type:"text",class:"obs",placeholder:"Observação / medida",value:d.obs||"","aria-label":"Observação de "+it.label});
  obs.oninput=()=>{st().obs=obs.value;agendarSalvar();};
- row.append(h("div",{class:"lbl"},h("strong",{},it.label),it.hint?h("em",{},it.hint):null),h("div",{class:"ctrl"},seg,cam),obs,thumbs,file);
+ // mais observações no mesmo item
+ const extrasBox=h("div",{class:"obs-extras"});
+ const pintarExtras=(focar)=>{extrasBox.innerHTML="";const o=c.itens[it.id];const ex=(o&&o.extras)||[];
+  ex.forEach((v,i)=>{const inp=h("input",{type:"text",class:"obs",placeholder:"Observação "+(i+2),value:v,"aria-label":"Observação "+(i+2)+" de "+it.label});
+   inp.oninput=()=>{st().extras[i]=inp.value;agendarSalvar();};
+   extrasBox.append(h("div",{class:"obs-linha"},inp,h("button",{type:"button",class:"obs-del","aria-label":"Remover observação "+(i+2),onclick:()=>{st().extras.splice(i,1);agendarSalvar();pintarExtras();}},"×")));
+   if(focar&&i===ex.length-1)inp.focus();});};
+ const maisObs=h("button",{type:"button",class:"obs-mais",onclick:()=>{const o=st();o.extras=o.extras||[];o.extras.push("");agendarSalvar();pintarExtras(true);}},"+ Observação");
+ const lblBox=h("div",{class:"lbl"},h("strong",{},it.label),it.hint?h("em",{},it.hint):null);
+ if(it.custom)lblBox.append(h("button",{type:"button",class:"obs-mais",style:"margin-top:4px",onclick:()=>{if(it.remover)it.remover();}},"Remover item"));
+ row.append(lblBox,h("div",{class:"ctrl"},seg,cam),obs,extrasBox,maisObs,thumbs,file);
+ pintarExtras();
  pintar();
  return row;
 }
@@ -998,8 +1033,9 @@ async function gerarPDF(btn){
    columnStyles:{0:{fontStyle:"bold",cellWidth:40},2:{fontStyle:"bold",cellWidth:34}}}));
   SECOES.forEach(s=>{
    doc.autoTable(Object.assign({},base,{startY:doc.lastAutoTable.finalY+3,head:[[s.titulo.toUpperCase(),"OK","N/A","Observação"]],
-    body:s.itens.map(it=>{const d=c.itens[it.id]||{};const nf=(d.fotos||[]).length;
-     return [(it.sub?"   – ":"")+it.label+(it.hint?" ("+it.hint+")":""),d.s==="ok"?"X":"",d.s==="na"?"X":"",(d.obs||"")+(nf?(d.obs?" · ":"")+nf+" foto"+(nf>1?"s":"")+" (anexo)":"")];}),
+    body:s.itens.concat(((c.custom||{})[s.id]||[]).map(ci=>({id:ci.id,label:ci.label,hint:""}))).map(it=>{const d=c.itens[it.id]||{};const nf=(d.fotos||[]).length;
+     const obsTxt=[d.obs||""].concat(d.extras||[]).map(x=>String(x).trim()).filter(Boolean).join("\n");
+     return [(it.sub?"   – ":"")+it.label+(it.hint?" ("+it.hint+")":""),d.s==="ok"?"X":"",d.s==="na"?"X":"",obsTxt+(nf?(obsTxt?" · ":"")+nf+" foto"+(nf>1?"s":"")+" (anexo)":"")];}),
     columnStyles:{0:{cellWidth:78},1:{cellWidth:10,halign:"center",fontStyle:"bold"},2:{cellWidth:10,halign:"center",fontStyle:"bold"}}}));
   });
   const m=c.mat||{};const matTxt=k=>(m[k]||[]).map(cod=>cod+" – "+(MAT[k].o.find(x=>x[0]===cod)||["",""])[1]).join("\n")||"—";
@@ -1029,7 +1065,9 @@ async function gerarPDF(btn){
    doc.setFontSize(8);doc.setTextColor(...grey);doc.text(lab,x,y+28);doc.setTextColor(...ink);doc.setFontSize(9);doc.text(a.nome||"",x,y+32);
   });
   // anexo de fotos
-  const fotos=[];TODOS.forEach(it=>{const d=c.itens[it.id];(d&&d.fotos||[]).forEach((f,i)=>fotos.push({it,f,i}));});
+  const fotos=[];
+  const todosPdf=[];SECOES.forEach(s=>{s.itens.forEach(it=>todosPdf.push(Object.assign({},it,{secao:s})));((c.custom||{})[s.id]||[]).forEach(ci=>todosPdf.push({id:ci.id,label:ci.label,secao:s}));});
+  todosPdf.forEach(it=>{const d=c.itens[it.id];(d&&d.fotos||[]).forEach((f,i)=>fotos.push({it,f,i}));});
   if(fotos.length){
    doc.addPage();doc.setFont("helvetica","bold");doc.setFontSize(13);doc.setTextColor(...ink);doc.text("ANEXO – REGISTRO FOTOGRÁFICO",M,16);
    doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...grey);doc.text((c.cliente||"")+" · "+fmtData(c.data),M,21);
