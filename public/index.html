@@ -160,6 +160,11 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .uchecks .chk{padding-bottom:0}
 .uedit-bt{display:flex;gap:8px}
 .uinfo>span:not([class]){text-transform:none}
+.radd{display:flex;gap:10px;align-items:end;padding-top:14px;flex-wrap:wrap}
+.radd .f{flex:1 1 220px}
+.radd .btn{min-height:44px}
+.redit{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap}
+.redit input{flex:1 1 200px}
 
 /* list */
 .listhead{display:flex;gap:10px;align-items:center;padding-block:18px 12px;flex-wrap:wrap}
@@ -191,6 +196,13 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .addr{grid-column:1/-1;display:grid;gap:12px;grid-template-columns:minmax(0,1fr) 96px}
 .addr .f-cidade{grid-column:1/-1}
 @media (min-width:640px){.addr{grid-template-columns:minmax(0,2fr) 100px minmax(0,1.3fr)}.addr .f-cidade{grid-column:auto}}
+.rchips{display:flex;flex-wrap:wrap;gap:6px}
+.rchips:empty{display:none}
+.rchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 12px;font-size:14px}
+.rchip.pri{border-color:var(--accent)}
+.rchip small{font-family:var(--mono);font-size:10px;color:var(--accent)}
+.rchip button{border:0;background:var(--sunken);border-radius:999px;width:26px;height:26px;display:grid;place-items:center;font-size:16px;line-height:1;color:var(--muted)}
+.f-responsavel{grid-column:1/-1}
 .cep-hint{font-size:12px;color:var(--muted);min-height:1em}
 .cep-hint.ok{color:var(--ok)}
 .timepair{display:flex;gap:6px}
@@ -345,7 +357,7 @@ const CID_MAP = new Map(CID_IDX);
 const cidadeUF = c=>c? c+(CID_MAP.has(normTxt(c))?" – BA":"") : "";
 const DADOS = [
  ["cliente","Cliente","wide",1],["contato","Contato","",1],["telefone","Telefone","tel"],["cep","CEP","cep"],["endereco","Endereço","",1],["numero","Nº",""],["cidade","Cidade","",1],
- ["responsavel","Responsável cad.","",1],["data","Data","date"]
+ ["responsavel","Responsável cad.","resp",1],["data","Data","date"]
 ];
 const EDIF = [
  ["ocupacao","Ocupação / atividade","wide",1],["area","Área construída (m²)","num"],["pavimentos","Nº de pavimentos","num"],
@@ -611,8 +623,39 @@ async function excluirChecklist(c){
 }
 
 /* ---------- render: editor ---------- */
+/* ---------- responsáveis pelo cadastro (um ou mais) ---------- */
+let RESPONSAVEIS=[]; // nomes cadastrados pelo admin (versão com servidor)
+function respLista(c){
+ if(!Array.isArray(c.responsaveis))c.responsaveis=c.responsavel?String(c.responsavel).split(/\s*[,/]\s*/).filter(Boolean):[];
+ return c.responsaveis;
+}
+function autoAssinaturaCad(c){
+ const a=c.assin.cad=c.assin.cad||{nome:"",img:""};const pri=respLista(c)[0]||"";
+ if(!a.nome||a.auto){a.nome=pri;a.auto=!!pri;const f=document.getElementById("f_ass_cad");if(f)f.value=pri;}
+}
+function campoResponsaveis(c,lab){
+ const lst=respLista(c);
+ const chips=h("div",{class:"rchips"});
+ const inp=h("input",{type:"text",id:"f_responsavel",placeholder:RESPONSAVEIS.length?"Toque para escolher ou digite um nome":"Digite o nome e toque Enter"});
+ const sync=()=>{c.responsavel=lst.join(", ");autoAssinaturaCad(c);agendarSalvar();pintar();};
+ const add=n=>{n=titulo(String(n||"").trim());if(!n)return;if(!lst.some(x=>normTxt(x)===normTxt(n)))lst.push(n);inp.value="";sync();};
+ const pintar=()=>{chips.innerHTML="";lst.forEach((n,i)=>chips.append(h("span",{class:"rchip"+(i===0?" pri":"")},
+   i===0?h("small",{},"1º"):null,n,h("button",{type:"button","aria-label":"Remover "+n,onclick:e=>{e.preventDefault();e.stopPropagation();lst.splice(i,1);sync();}},"×"))));};
+ inp.addEventListener("input",()=>{const p=inp.selectionStart;inp.value=titulo(inp.value);try{inp.setSelectionRange(p,p);}catch(e){}});
+ inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&inp.value.trim()){e.preventDefault();e.stopImmediatePropagation();add(inp.value);}});
+ inp.addEventListener("blur",()=>setTimeout(()=>{if(inp.value.trim()&&document.activeElement!==inp)add(inp.value);},200));
+ const lbl=h("label",{class:"f f-responsavel"},h("span",{},lab),chips,inp);
+ setTimeout(()=>autocompletar(inp,q=>{
+   const pool=RESPONSAVEIS.length?RESPONSAVEIS:[...new Set(lista.flatMap(x=>respLista(Object.assign({},x))))];
+   return pool.filter(n=>!lst.some(x=>normTxt(x)===normTxt(n))&&(!q||normTxt(n).includes(q))).slice(0,10).map(v=>({v}));
+  },it=>add(it.v)),0);
+ pintar();
+ return lbl;
+}
+
 function campo(def,obj,onchg){
  const [k,lab,kind,tc]=def;
+ if(kind==="resp")return campoResponsaveis(obj,lab);
  const attrs={id:"f_"+k,value:obj[k]||""};
  if(kind==="date")attrs.type="date",attrs.max="9999-12-31",attrs.min="1900-01-01";
  else if(kind==="tel")attrs.type="tel",attrs.inputmode="tel",attrs.placeholder="(00)00000-0000";
@@ -827,8 +870,9 @@ function exportarCroqui(cv){
 function assinatura(k,lab){
  const a=cur.assin[k]=cur.assin[k]||{nome:"",img:""};
  const cv=h("canvas",{"aria-label":"Assinatura "+lab});
+ if(k==="cad")autoAssinaturaCad(cur);
  const nome=h("input",{type:"text",id:"f_ass_"+k,placeholder:"Nome",value:a.nome||""});
- nome.oninput=()=>{const p=nome.selectionStart;nome.value=titulo(nome.value);try{nome.setSelectionRange(p,p);}catch(e){}a.nome=nome.value;agendarSalvar();};
+ nome.oninput=()=>{const p=nome.selectionStart;nome.value=titulo(nome.value);try{nome.setSelectionRange(p,p);}catch(e){}a.nome=nome.value;a.auto=false;agendarSalvar();};
  let ctx,draw=false,last=null,dirty=false;
  const setup=()=>{const r=cv.getBoundingClientRect();if(!r.width)return;const dpr=window.devicePixelRatio||1;cv.width=r.width*dpr;cv.height=r.height*dpr;ctx=cv.getContext("2d");ctx.scale(dpr,dpr);
   ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--ink").trim()||"#111";
@@ -851,11 +895,17 @@ function exportarAss(cv){
 
 /* ---------- Enter avança ---------- */
 function enterAvanca(root){
+ if(root._enterOk)return;root._enterOk=true; // um único ouvinte por tela (antes acumulava e pulava campos)
  root.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"||e.target.tagName!=="INPUT"||e.target.type==="search")return;
+  const t=e.target;
+  if(e.key!=="Enter"||e.isComposing||t.tagName!=="INPUT"||t.type==="search")return;
   e.preventDefault();
-  const els=[...root.querySelectorAll("input:not([type=file]):not([hidden]),textarea")].filter(x=>x.offsetParent!==null);
-  const i=els.indexOf(e.target);if(i>=0&&els[i+1])els[i+1].focus();
+  const escopo=t.form||root;
+  const els=[...escopo.querySelectorAll("input:not([type=file]):not([type=checkbox]):not([type=radio]):not([hidden]),textarea,select")].filter(x=>x.offsetParent!==null&&!x.disabled&&!x.readOnly);
+  const i=els.indexOf(t);
+  if(i>=0&&els[i+1]){els[i+1].focus();return;}
+  // último campo de um formulário: Enter confirma (Entrar, Salvar, Cadastrar…)
+  if(t.form){if(t.form.requestSubmit)t.form.requestSubmit();else t.form.dispatchEvent(new Event("submit",{cancelable:true}));}
  });
 }
 
@@ -978,14 +1028,17 @@ async function api(path,opt={}){
  }
  return d;
 }
+let pendente=null; // vistoria aberta quando a sessão caiu: volta e salva depois do login
 function sessaoExpirada(){
  if(view==="login")return;
- usuario=null;view="login";render();toast("Sua sessão expirou. Entre novamente.");
+ if(view==="edit"&&cur){pendente={c:JSON.parse(JSON.stringify(cur)),aba,voltar};clearTimeout(saveT);saveT=null;}
+ usuario=null;view="login";render();toast(pendente?"Sua sessão expirou. Entre novamente: a vistoria aberta não será perdida.":"Sua sessão expirou. Entre novamente.");
 }
 async function recarregar(forcar){
  if(!usuario)return;
  if(!forcar&&Date.now()-ultimaCarga<4000)return;
  ultimaCarga=Date.now();
+ carregarResponsaveis();
  try{lista=await api("/api/checklists");listaPronta=true;atualizarTela();}
  catch(e){if(e.status!==401){listaPronta=true;atualizarTela();if(e.status===0)toast("Sem conexão: mostrando a última lista carregada.");}}
 }
@@ -1118,6 +1171,39 @@ async function renderUsuarios(){
   catch(er){erro.textContent=er.message;}
   bt.disabled=false;});
  app.append(h("section",{class:"sec"},h("div",{class:"sec-h"},h("h2",{style:"font-size:20px"},"Equipe")),box),form);
+ // responsáveis pelo cadastro (aparecem para escolher na vistoria)
+ const rbox=h("div",{class:"ulist"},h("p",{class:"muted"},"Carregando…"));
+ const rNome=campoNome(h("input",{id:"r_nome",type:"text",required:true,placeholder:"Nome completo"}));
+ const rErro=h("div",{class:"erro",role:"alert"});
+ const rBt=h("button",{class:"btn primary",type:"submit"},ico("plus"),"Adicionar");
+ const rForm=h("form",{class:"radd"},h("label",{class:"f"},h("span",{},"Novo responsável"),rNome),rBt);
+ rForm.addEventListener("submit",async e=>{e.preventDefault();rErro.textContent="";rBt.disabled=true;
+  try{await api("/api/responsaveis",{method:"POST",body:JSON.stringify({nome:rNome.value.trim()})});toast(rNome.value.trim()+" adicionado");rNome.value="";carregarR();}
+  catch(er){rErro.textContent=er.message;}rBt.disabled=false;});
+ app.append(h("section",{class:"sec"},h("div",{class:"sec-h"},h("h2",{style:"font-size:20px"},"Responsáveis pelo cadastro")),
+  h("p",{class:"muted",style:"margin:10px 0 0;font-size:14px"},"Pessoas que vão às vistorias. Elas aparecem para escolher no campo Responsável cad., e o primeiro escolhido já vai para a assinatura."),
+  rbox,rForm,rErro));
+ async function carregarR(){
+  let rs;try{rs=await api("/api/responsaveis");}catch(e){rbox.innerHTML="";rbox.append(h("p",{class:"erro"},e.message));return;}
+  RESPONSAVEIS=rs.map(x=>x.nome);rbox.innerHTML="";
+  if(!rs.length)rbox.append(h("p",{class:"muted",style:"padding:12px 0"},"Nenhum responsável cadastrado ainda."));
+  rs.forEach(x=>{
+   const nomeEl=h("strong",{},x.nome);
+   const ed=campoNome(h("input",{type:"text",value:x.nome}));
+   const salvar=h("button",{class:"btn primary",type:"submit"},"Salvar");
+   const canc=h("button",{class:"btn",type:"button"},"Cancelar");
+   const fEd=h("form",{class:"redit",hidden:true},ed,salvar,canc);
+   const btEd=h("button",{class:"btn",type:"button"},"Editar");
+   const del=h("button",{class:"btn danger",type:"button"},"Excluir");
+   armarExclusao(del,"Excluir",async()=>{try{await api("/api/responsaveis/"+x.id,{method:"DELETE"});toast(x.nome+" excluído");carregarR();}catch(e){toast(e.message);}});
+   const acts=h("div",{class:"uact"},btEd,del);
+   btEd.onclick=()=>{fEd.hidden=false;acts.hidden=true;nomeEl.hidden=true;ed.focus();};
+   canc.onclick=()=>{fEd.hidden=true;acts.hidden=false;nomeEl.hidden=false;};
+   fEd.addEventListener("submit",async e=>{e.preventDefault();try{await api("/api/responsaveis/"+x.id,{method:"PUT",body:JSON.stringify({nome:ed.value.trim()})});toast("Nome atualizado");carregarR();}catch(er){toast(er.message);}});
+   rbox.append(h("div",{class:"urow"},h("div",{class:"uinfo"},nomeEl),acts,fEd));
+  });
+ }
+ carregarR();
  enterAvanca(app);
  async function carregar(){
   let us;try{us=await api("/api/usuarios");}catch(e){box.innerHTML="";box.append(h("p",{class:"erro"},e.message));return;}
@@ -1167,6 +1253,7 @@ async function renderUsuarios(){
 }
 
 /* ---------- inicialização ---------- */
+async function carregarResponsaveis(){try{RESPONSAVEIS=(await api("/api/responsaveis")).map(x=>x.nome);}catch(e){}}
 function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}}
 async function iniciarSessao(){
  let e;try{e=await api("/api/estado");}catch(er){
@@ -1179,6 +1266,7 @@ async function iniciarSessao(){
  let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1";}catch(er){aberto=true;}
  if(!aberto){try{await api("/api/logout",{method:"POST"});}catch(er){}view="login";render();return;}
  usuario=e.usuario;userId=String(usuario.id);
+ if(pendente){const pd=pendente;pendente=null;cur=pd.c;aba=pd.aba;voltar=pd.voltar;view="edit";render();salvarAgora();recarregar(true);toast("Vistoria recuperada e salva.");return;}
  view="home";listaPronta=false;render();recarregar(true);
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&(view==="home"||view==="list"))recarregar();});

@@ -1,7 +1,7 @@
 // Check-List de Cadastro PPCI — API (Cloudflare Worker + D1)
 // Rotas em /api/*; o resto é servido de ./public (index.html).
 
-const SESSAO_HORAS = 12; // sessão curta: ao fechar o app, pede login de novo
+const SESSAO_HORAS = 12; // ao fechar o app, o próprio app pede login de novo (marca na aba)
 const PBKDF2_ITER = 100000;
 const FOTO_MAX = 1_900_000; // limite de linha do D1 é 2 MB
 
@@ -101,7 +101,7 @@ async function rotear(req, env, url) {
     const salt = aleatorio(); const h = await hashSenha(b.senha, salt);
     const r = await env.DB.prepare("INSERT INTO usuarios (usuario,nome,senha_hash,salt,admin,ativo,criado) VALUES (?,?,?,?,1,1,?)").bind(b.usuario.trim(), nome, h, salt, agora()).run();
     const token = await criarSessao(env, r.meta.last_row_id);
-    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token) });
+    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token, SESSAO_HORAS * 3600) });
   }
 
   if (p === "/api/login" && m === "POST") {
@@ -111,7 +111,7 @@ async function rotear(req, env, url) {
     if (!u || !iguais(h, u.senha_hash)) falha("Usuário ou senha incorretos.", 401);
     if (!u.ativo) falha("Este usuário está desativado. Fale com o administrador.", 403);
     const token = await criarSessao(env, u.id);
-    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token) });
+    return json({ ok: true }, 200, { "set-cookie": cookieSessao(token, SESSAO_HORAS * 3600) });
   }
 
   if (p === "/api/logout" && m === "POST") {
@@ -180,6 +180,29 @@ async function rotear(req, env, url) {
       ]);
       return json({ ok: true });
     }
+  }
+
+  /* ----- responsáveis pelo cadastro (lista mantida pelo admin) ----- */
+  if (seg[0] === "responsaveis") {
+    if (seg.length === 1 && m === "GET") {
+      await exigirLogin(req, env);
+      const r = await env.DB.prepare("SELECT id,nome FROM responsaveis ORDER BY nome COLLATE NOCASE").all();
+      return json(r.results);
+    }
+    await exigirAdmin(req, env);
+    const dup = (e) => { if (String(e).includes("UNIQUE")) falha("Esse nome já está cadastrado.", 409); throw e; };
+    if (seg.length === 1 && m === "POST") {
+      const b = await corpo(req); const nome = String(b.nome || "").trim(); if (!nome) falha("Informe o nome.");
+      try { await env.DB.prepare("INSERT INTO responsaveis (nome,criado) VALUES (?,?)").bind(nome, agora()).run(); } catch (e) { dup(e); }
+      return json({ ok: true });
+    }
+    const id = Number(seg[1]); if (!id) falha("Responsável não encontrado.", 404);
+    if (m === "PUT") {
+      const b = await corpo(req); const nome = String(b.nome || "").trim(); if (!nome) falha("Informe o nome.");
+      try { await env.DB.prepare("UPDATE responsaveis SET nome=? WHERE id=?").bind(nome, id).run(); } catch (e) { dup(e); }
+      return json({ ok: true });
+    }
+    if (m === "DELETE") { await env.DB.prepare("DELETE FROM responsaveis WHERE id=?").bind(id).run(); return json({ ok: true }); }
   }
 
   /* ----- check-lists ----- */
