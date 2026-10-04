@@ -554,7 +554,9 @@ function desenharCards(){
    h("div",{class:"meta"},[fmtData(c.data),[[c.endereco,c.numero].filter(Boolean).join(", "),cidadeUF(c.cidade)].filter(Boolean).join(" – "),c.responsavel&&("Resp.: "+c.responsavel)].filter(Boolean).join(" · ")),
    h("div",{class:"meta"},p.f+" de "+p.n+" itens · "+nf+" foto"+(nf===1?"":"s")+(c._atualizadoPor?" · alterado por "+c._atualizadoPor:"")),
    bar,
-   h("div",{class:"card-actions"},h("button",{class:"btn",type:"button",onclick:abrir},"Editar"),del)));
+   h("div",{class:"card-actions"},
+    c.status==="concluido"?(()=>{const b=h("button",{class:"btn primary",type:"button"},ico("pdf"),"Gerar PDF");b.onclick=()=>gerarPDF(b,JSON.parse(JSON.stringify(c)));return b;})():null,
+    h("button",{class:"btn",type:"button",onclick:abrir},"Editar"),del)));
  });
 }
 
@@ -1002,12 +1004,14 @@ function atualizarProgresso(){
 /* ---------- PDF ---------- */
 function blobToDataURL(b){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);});}
 async function srcToDataURL(src){if(src.startsWith("data:"))return src;const r=await fetch(src);if(!r.ok)throw 0;return blobToDataURL(await r.blob());}
-async function gerarPDF(btn){
+async function gerarPDF(btn,alvo){
  if(!window.jspdf||!window.jspdf.jsPDF){toast("O gerador de PDF não carregou. Verifique a conexão e recarregue a página.");return;}
  if(!downloads){toast("O download não está disponível nesta visualização. Abra o check-list pelo claude.ai.");return;}
- if(!(cur.cliente||"").trim()){toast("Preencha o nome do cliente: ele é usado como nome do PDF.");mostrarAba("dados");const f=$("#f_cliente");f&&f.focus();return;}
- await salvarAgora();
- const c=cur;btn.disabled=true;const old=btn.innerHTML;btn.textContent="Gerando PDF…";
+ const c=alvo||cur;
+ if(!(c.cliente||"").trim()){toast("Preencha o nome do cliente: ele é usado como nome do PDF.");if(!alvo){mostrarAba("dados");const f=$("#f_cliente");f&&f.focus();}return;}
+ if(!alvo)await salvarAgora();
+ c.assin=c.assin||{};c.itens=c.itens||{};
+ btn.disabled=true;const old=btn.innerHTML;btn.textContent="Gerando PDF…";
  try{
   const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});
   // todo o texto do PDF em caixa alta
