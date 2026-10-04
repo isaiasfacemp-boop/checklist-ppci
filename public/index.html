@@ -178,6 +178,12 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .t-usu .tile-ic,.t-senha .tile-ic,.t-sair .tile-ic{background:rgba(255,255,255,.16)}
 .t-usu .tile-tx em,.t-senha .tile-tx em,.t-sair .tile-tx em{color:inherit;opacity:.85}
 .t-usu:hover{border-color:var(--logo)}.t-senha:hover{border-color:var(--muted)}.t-sair:hover{border-color:var(--ink)}
+.quem{display:flex;align-items:center;gap:8px;margin-right:auto;font-size:15px;min-width:0}
+.quem strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quem-ic{width:30px;height:30px;border-radius:999px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);flex:none}
+.quem-ic svg{width:17px;height:17px}
+.tema-row:has(.quem){margin-bottom:0;align-items:center}
+@media (min-width:700px){.tiles-user{grid-template-columns:repeat(3,minmax(0,1fr))}.tiles-user .tile{grid-column:3}}
 
 /* list */
 .listhead{display:flex;gap:10px;align-items:center;padding-block:18px 12px;flex-wrap:wrap}
@@ -724,6 +730,7 @@ function campo(def,obj,onchg){
 
 function renderEditor(){
  const c=cur;const app=$("#app");app.innerHTML="";
+ if(!c.inicio){c.inicio=agora();agendarSalvar();}
  const navBtns=[["dados","Dados"],...SECOES.map(s=>[s.id,s.nav]),["materiais","Materiais"],["fechamento","Fechamento"]];
  const nav=h("div",{class:"nav",id:"nav"},navBtns.map(([id,t])=>h("button",{"data-go":id,onclick:()=>mostrarAba(id)},t,h("b",{"data-cnt":id}))));
  app.append(h("div",{class:"top"},
@@ -744,7 +751,7 @@ function renderEditor(){
   g.querySelector(".f-cep").append(h("div",{class:"cep-hint",id:"cepHint"}));}
  ligarEnderecoCidade(g,c);
  const tp=(k,lab)=>{const i=h("input",{type:"time",id:"f_"+k,value:c[k]||"",oninput:e=>{c[k]=e.target.value;agendarSalvar();}});
-  return h("label",{class:"f"},h("span",{},lab),h("div",{class:"timepair"},i,h("button",{class:"btn",type:"button",onclick:()=>{i.value=agora();c[k]=i.value;agendarSalvar();}},"Agora")));};
+  return h("label",{class:"f"},h("span",{},lab),i);};
  g.append(tp("inicio","Hora início"),tp("fim","Hora fim"));
  sd.append(g);
  const g2=h("div",{class:"grid"});c.edif=c.edif||{};
@@ -795,7 +802,7 @@ function renderEditor(){
  const btnPdf=h("button",{class:"btn",type:"button",id:"btnPdf",onclick:()=>gerarPDF(btnPdf)},ico("pdf"),"Baixar PDF");
  const btnFim=h("button",{class:"btn primary",type:"button",id:"btnFim"});
  const paintFim=()=>{btnFim.innerHTML="";btnFim.append(ico("check"),c.status==="concluido"?"Reabrir vistoria":"Concluir vistoria");};paintFim();
- btnFim.onclick=()=>{if(c.status==="concluido"){c.status="andamento";}else{c.status="concluido";if(!c.fim){c.fim=agora();const f=$("#f_fim");if(f)f.value=c.fim;}}paintFim();agendarSalvar();toast(c.status==="concluido"?"Vistoria concluída":"Vistoria reaberta");};
+ btnFim.onclick=()=>{if(c.status==="concluido"){c.status="andamento";}else{c.status="concluido";c.fim=agora();const f=$("#f_fim");if(f)f.value=c.fim;}paintFim();agendarSalvar();toast(c.status==="concluido"?"Vistoria concluída às "+c.fim:"Vistoria reaberta");};
 
  const btnDel=h("button",{class:"btn danger",type:"button"},"Excluir check-list");
  armarExclusao(btnDel,"Excluir check-list",async()=>{if(await excluirChecklist(c)){cur=null;view=voltar;render();}});
@@ -809,7 +816,8 @@ function renderEditor(){
  const barraPassos=(ant,prox,cls)=>h("div",{class:"stepnav"+(cls?" "+cls:"")},
   ant?h("button",{class:"btn",type:"button",onclick:()=>mostrarAba(ant[0])},ico("back"),h("span",{},ant[1]))
      :h("button",{class:"btn",type:"button",onclick:sairEditor},ico("back"),h("span",{},voltar==="list"?"Voltar à lista":"Tela inicial")),
-  prox?h("button",{class:"btn primary",type:"button",onclick:()=>mostrarAba(prox[0])},h("span",{},prox[1]),seta()):h("span"));
+  prox?h("button",{class:"btn primary",type:"button",onclick:()=>mostrarAba(prox[0])},h("span",{},prox[1]),seta())
+      :h("button",{class:"btn primary",type:"button",onclick:sairEditor,title:"Salva e sai da vistoria"},h("span",{},"Sair"),(()=>{const x=h("span",{html:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H6v16h8"/><path d="M10.5 12H20M16.5 8.5 20 12l-3.5 3.5"/></svg>'}).firstChild;return x;})()));
  app.querySelectorAll("section.sec").forEach(sec=>{
   const id=sec.id.slice(4);const k=navBtns.findIndex(x=>x[0]===id);
   const ant=navBtns[k-1],prox=navBtns[k+1];
@@ -1027,23 +1035,42 @@ async function gerarPDF(btn,alvo){
   doc.text(c.status==="concluido"?"Vistoria concluída":"Vistoria em andamento",W-M,22,{align:"right"});
   doc.setDrawColor(...red);doc.setLineWidth(0.8);doc.line(M,26,W-M,26);
   const base={didParseCell:d=>{d.cell.text=(d.cell.text||[]).map(t=>UP(t));},theme:"grid",margin:{left:M,right:M},styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[200,205,212],lineWidth:0.2},headStyles:{fillColor:ink,textColor:255,fontStyle:"bold"}};
+  // só o que foi preenchido entra no relatório
+  const tem=v=>String(v==null?"":v).trim()!=="";
+  const linhas=campos=>{const out=[];let pend=null;
+   campos.filter(x=>tem(x[1])).forEach(([l,v,full])=>{
+    if(full){if(pend){out.push([pend[0],{content:pend[1],colSpan:3}]);pend=null;}out.push([l,{content:v,colSpan:3}]);}
+    else if(pend){out.push([pend[0],pend[1],l,v]);pend=null;}else pend=[l,v];});
+   if(pend)out.push([pend[0],{content:pend[1],colSpan:3}]);return out;};
+  const proxY=()=>doc.lastAutoTable&&doc.lastAutoTable.finalY?doc.lastAutoTable.finalY+3:30;
+  const horas=(tem(c.inicio)||tem(c.fim))?[(c.inicio||"--:--"),(c.fim||"--:--")].join("  às  "):"";
+  const endTxt=[c.endereco,tem(c.numero)?"nº "+c.numero:""].filter(tem).join(", ");
   doc.autoTable(Object.assign({},base,{startY:30,head:[[{content:"Dados do proprietário / responsável",colSpan:4}]],
-   body:[["Cliente",{content:c.cliente||"",colSpan:3}],["Contato",c.contato||"","Telefone",c.telefone||""],["Endereço",c.endereco||"","Nº",c.numero||""],["CEP",c.cep||"","Cidade",cidadeUF(c.cidade)],
-    ["Responsável cad.",c.responsavel||"","Hora início / fim",(c.inicio||"--:--")+"  às  "+(c.fim||"--:--")]],
+   body:linhas([["Cliente",c.cliente,1],["Contato",c.contato],["Telefone",c.telefone],["Endereço",endTxt,1],["CEP",c.cep],["Cidade",cidadeUF(c.cidade)],["Responsável cad.",c.responsavel,1],["Hora início / fim",horas]]),
    columnStyles:{0:{fontStyle:"bold",cellWidth:32},2:{fontStyle:"bold",cellWidth:32}}}));
   const e=c.edif||{};
-  doc.autoTable(Object.assign({},base,{startY:doc.lastAutoTable.finalY+3,head:[[{content:"Dados da edificação",colSpan:4}]],
-   body:[["Ocupação / atividade",{content:e.ocupacao||"",colSpan:3}],["Área construída (m2)",e.area||"","Nº de pavimentos",e.pavimentos||""],["Altura (m)",e.altura||"","População estimada",e.populacao||""],["Horário de funcionamento",{content:e.horario||"",colSpan:3}]],
+  const linEd=linhas([["Ocupação / atividade",e.ocupacao,1],["Área construída (m2)",e.area],["Nº de pavimentos",e.pavimentos],["Altura (m)",e.altura],["População estimada",e.populacao],["Horário de funcionamento",e.horario,1]]);
+  if(linEd.length)doc.autoTable(Object.assign({},base,{startY:proxY(),head:[[{content:"Dados da edificação",colSpan:4}]],body:linEd,
    columnStyles:{0:{fontStyle:"bold",cellWidth:40},2:{fontStyle:"bold",cellWidth:34}}}));
   SECOES.forEach(s=>{
-   doc.autoTable(Object.assign({},base,{startY:doc.lastAutoTable.finalY+3,head:[[s.titulo.toUpperCase(),"OK","N/A","Observação"]],
-    body:s.itens.concat(((c.custom||{})[s.id]||[]).map(ci=>({id:ci.id,label:ci.label,hint:""}))).map(it=>{const d=c.itens[it.id]||{};const nf=(d.fotos||[]).length;
-     const obsTxt=[d.obs||""].concat(d.extras||[]).map(x=>String(x).trim()).filter(Boolean).join("\n");
-     return [(it.sub?"   – ":"")+it.label+(it.hint?" ("+it.hint+")":""),d.s==="ok"?"X":"",d.s==="na"?"X":"",obsTxt+(nf?(obsTxt?" · ":"")+nf+" foto"+(nf>1?"s":"")+" (anexo)":"")];}),
+   const lista2=s.itens.concat(((c.custom||{})[s.id]||[]).map(ci=>({id:ci.id,label:ci.label,hint:""})));
+   let pai=null;const corpo=[];
+   lista2.forEach(it=>{
+    if(!it.sub)pai=it;
+    const d=c.itens[it.id]||{};const nf=(d.fotos||[]).length;
+    const obsTxt=[d.obs||""].concat(d.extras||[]).map(x=>String(x).trim()).filter(Boolean).join("\n");
+    if(!d.s&&!obsTxt&&!nf)return; // item sem nada preenchido: fica de fora
+    let nome=it.label+(it.hint?" ("+it.hint+")":"");
+    if(it.sub)nome=(pai&&!corpo.some(r=>r._id===pai.id)?pai.label+" – ":"   – ")+nome;
+    const row=[nome,d.s==="ok"?"X":"",d.s==="na"?"X":"",obsTxt+(nf?(obsTxt?" · ":"")+nf+" foto"+(nf>1?"s":"")+" (anexo)":"")];row._id=it.id;corpo.push(row);
+   });
+   if(!corpo.length)return; // aba sem nada preenchido: fica de fora
+   doc.autoTable(Object.assign({},base,{startY:proxY(),head:[[s.titulo.toUpperCase(),"OK","N/A","Observação"]],body:corpo,
     columnStyles:{0:{cellWidth:78},1:{cellWidth:10,halign:"center",fontStyle:"bold"},2:{cellWidth:10,halign:"center",fontStyle:"bold"}}}));
   });
-  const m=c.mat||{};const matTxt=k=>(m[k]||[]).map(cod=>cod+" – "+(MAT[k].o.find(x=>x[0]===cod)||["",""])[1]).join("\n")||"—";
-  doc.autoTable(Object.assign({},base,{startY:doc.lastAutoTable.finalY+3,head:[["Piso","Parede","Teto / forro"]],body:[[matTxt("piso"),matTxt("parede"),matTxt("teto")]]}));
+  const m=c.mat||{};const matTxt=k=>(m[k]||[]).map(cod=>cod+" – "+(MAT[k].o.find(x=>x[0]===cod)||["",""])[1]).join("\n");
+  const colMat=["piso","parede","teto"].filter(k=>(m[k]||[]).length);
+  if(colMat.length)doc.autoTable(Object.assign({},base,{startY:proxY(),head:[colMat.map(k=>MAT[k].t)],body:[colMat.map(matTxt)]}));
   if(c.croqui){
    let yc=doc.lastAutoTable.finalY+6;const cw2=W-2*M;let ch=cw2*3/4;
    try{const pr=doc.getImageProperties(c.croqui);ch=cw2*pr.height/pr.width;}catch(err){}
@@ -1059,7 +1086,7 @@ async function gerarPDF(btn,alvo){
    doc.setFont("helvetica","normal");doc.setTextColor(...ink);
    doc.lastAutoTable.finalY=yc+6+ch;
   }
-  doc.autoTable(Object.assign({},base,{startY:doc.lastAutoTable.finalY+3,head:[["Observações gerais"]],body:[[c.obsGeral||"—"]]}));
+  if(tem(c.obsGeral))doc.autoTable(Object.assign({},base,{startY:proxY(),head:[["Observações gerais"]],body:[[c.obsGeral]]}));
   let y=doc.lastAutoTable.finalY+8;if(y>250){doc.addPage();y=20;}
   const colW=(W-2*M-10)/2;
   [["cad","RESPONSÁVEL CADASTRO"],["edif","RESPONSÁVEL EDIFICAÇÃO"]].forEach(([k,lab],i)=>{
@@ -1170,25 +1197,27 @@ function campoNome(inp){
 async function sairDoApp(){await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");}catch(e){}usuario=null;lista=[];listaPronta=false;view="login";render();}
 const irUsuarios=()=>{view="usuarios";render();window.scrollTo(0,0);};
 const irSenha=()=>{view="senha";render();window.scrollTo(0,0);};
+// nome de quem está logado: no topo, ao lado do botão dia/noite
 function barraUsuario(app){
  if(!usuario)return;
- const ola=h("span",{},"Olá, ",h("strong",{},usuario.nome),usuario.admin?h("span",{class:"tag-adm"},"admin"):null);
- if(usuario.principal){app.append(h("div",{class:"userbar"},ola));return;} // admin principal: botões grandes abaixo
- app.append(h("div",{class:"userbar"},ola,
-  h("div",{class:"userbar-bt"},
-   usuario.admin?h("button",{class:"btn ghost",type:"button",onclick:irUsuarios},"Usuários"):null,
-   h("button",{class:"btn ghost",type:"button",onclick:irSenha},"Trocar senha"),
-   h("button",{class:"btn ghost",type:"button",onclick:sairDoApp},"Sair"))));
+ const row=app.querySelector(".tema-row");
+ const quem=h("div",{class:"quem"},h("span",{class:"quem-ic",html:ICON.usuarios}),h("strong",{},usuario.nome),usuario.admin?h("span",{class:"tag-adm"},"admin"):null);
+ if(row)row.prepend(quem);
 }
-// só para o administrador principal: Usuários, Trocar senha e Sair no mesmo formato dos quadros de cima
+// quadros de baixo: administrador tem Usuários, Trocar senha e Sair; os demais só Sair (abaixo de Concluído)
 function extraHome(app){
- if(!usuario||!usuario.principal)return;
+ if(!usuario)return;
  const tile=(cls,icon,titulo,sub,fn)=>h("button",{class:"tile "+cls,type:"button",onclick:fn},
   h("span",{class:"tile-ic",html:ICON[icon]}),h("span",{class:"tile-tx"},h("strong",{},titulo),h("em",{},sub)));
- app.append(h("div",{class:"tiles tiles-adm"},
-  tile("t-usu","usuarios","Usuários","Equipe e responsáveis",irUsuarios),
-  tile("t-senha","chave","Trocar senha","Alterar a sua senha",irSenha),
-  tile("t-sair","sair","Sair","Encerrar a sessão",sairDoApp)));
+ const sair=tile("t-sair","sair","Sair","Encerrar a sessão",sairDoApp);
+ if(usuario.admin){
+  app.append(h("div",{class:"tiles tiles-adm"},
+   tile("t-usu","usuarios","Usuários","Equipe e responsáveis",irUsuarios),
+   tile("t-senha","chave","Trocar senha","Alterar a sua senha",irSenha),
+   sair));
+ }else{
+  app.append(h("div",{class:"tiles tiles-adm tiles-user"},sair));
+ }
 }
 
 /* ---------- login / primeiro acesso ---------- */

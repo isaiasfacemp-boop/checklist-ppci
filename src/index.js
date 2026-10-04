@@ -124,6 +124,7 @@ async function rotear(req, env, url) {
   // trocar a própria senha
   if (p === "/api/senha" && m === "POST") {
     const eu = await exigirLogin(req, env);
+    if (!eu.admin) falha("Só o administrador pode trocar senha. Peça ao administrador para redefinir a sua.", 403);
     const b = await corpo(req); validarSenha(b.nova);
     const u = await env.DB.prepare("SELECT * FROM usuarios WHERE id=?").bind(eu.id).first();
     if (!iguais(await hashSenha(String(b.atual || ""), u.salt), u.senha_hash)) falha("A senha atual não confere.", 400);
