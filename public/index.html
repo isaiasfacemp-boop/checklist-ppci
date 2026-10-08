@@ -38,6 +38,7 @@
   --ok:#41C47C; --ok-soft:#173226; --na:#D9B04A; --na-soft:#352C15; --logo:#C9D3EC; color-scheme:dark}
 
 *{box-sizing:border-box}
+html,body{overscroll-behavior-y:none}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:820px;margin:0 auto;padding-inline:16px;padding-block:0 96px;position:relative}
 .bt-tema{width:42px;height:42px;padding:0;border-radius:999px;flex:none}
@@ -516,7 +517,7 @@ let lista=[], listaPronta=false, cur=null, view="home", filtro="", aba="dados", 
 let saveT=null, saveChain=Promise.resolve(), saveMsg="", retryT=null;
 
 function setSave(msg){saveMsg=msg;const e=$("#savestate");if(e)e.textContent=msg;}
-function agendarSalvar(){if(!cur)return;cur.updatedAt=Date.now();setSave("Salvando…");clearTimeout(saveT);saveT=setTimeout(salvarAgora,700);atualizarProgresso();}
+function agendarSalvar(){if(!cur)return;cur.updatedAt=Date.now();if(typeof lembrarAberta==="function")lembrarAberta();setSave("Salvando…");clearTimeout(saveT);saveT=setTimeout(salvarAgora,700);atualizarProgresso();}
 function salvarAgora(){
  clearTimeout(saveT);saveT=null;if(!cur||!store)return saveChain;
  const snap=JSON.parse(JSON.stringify(cur));
@@ -736,6 +737,7 @@ async function fecharEditor(){
  if(c&&checklistVazio(c)){clearTimeout(saveT);saveT=null;try{await saveChain;}catch(e){}cur=null;
   if(lista.some(x=>x.id===c.id))excluirChecklist(c,true);else{try{await store.remove(c.id);}catch(e){}}}
  else{await salvarAgora();cur=null;}
+ if(typeof esquecerAberta==="function")esquecerAberta();
  view=voltar;render();if(typeof recarregar==="function")recarregar();window.scrollTo(0,0);
 }
 
@@ -881,10 +883,12 @@ function renderEditor(){
  const btnPdf=h("button",{class:"btn",type:"button",id:"btnPdf",onclick:()=>gerarPDF(btnPdf)},ico("pdf"),"Baixar PDF");
  const btnFim=h("button",{class:"btn primary",type:"button",id:"btnFim"});
  const paintFim=()=>{btnFim.innerHTML="";btnFim.append(ico("check"),c.status==="concluido"?"Reabrir vistoria":"Concluir vistoria");};paintFim();
- btnFim.onclick=()=>{if(c.status==="concluido"){c.status="andamento";}else{c.status="concluido";c.fim=agora();const f=$("#f_fim");if(f)f.value=c.fim;}paintFim();agendarSalvar();toast(c.status==="concluido"?"Vistoria concluída às "+c.fim:"Vistoria reaberta");};
+ btnFim.onclick=async()=>{if(c.status==="concluido"){c.status="andamento";paintFim();agendarSalvar();toast("Vistoria reaberta");return;}
+  c.status="concluido";c.fim=agora();c.updatedAt=Date.now();btnFim.disabled=true;const hf=c.fim;
+  voltar="home";await fecharEditor();toast("Vistoria concluída às "+hf);};
 
  const btnDel=h("button",{class:"btn danger",type:"button"},"Excluir check-list");
- armarExclusao(btnDel,"Excluir check-list",async()=>{if(await excluirChecklist(c)){cur=null;view=voltar;render();}});
+ armarExclusao(btnDel,"Excluir check-list",async()=>{if(await excluirChecklist(c)){cur=null;if(typeof esquecerAberta==="function")esquecerAberta();view=voltar;render();}});
  sf.append(h("div",{class:"actions"},btnPdf,btnFim,btnDel));
  if(!downloads)btnPdf.title="O download não está disponível nesta visualização";
  app.append(sf);
@@ -956,7 +960,7 @@ function itemRow(it,s){
 }
 
 function mostrarAba(id,inicial){
- aba=id;
+ aba=id;if(typeof lembrarAberta==="function")lembrarAberta();
  document.querySelectorAll("section.sec").forEach(s=>s.hidden=s.id!=="sec_"+id);
  document.querySelectorAll("#nav button").forEach(b=>{const on=b.dataset.go===id;b.setAttribute("aria-current",on?"true":"false");if(on)b.scrollIntoView({block:"nearest",inline:"center"});});
  if(!inicial)window.scrollTo(0,0);
@@ -1900,7 +1904,7 @@ function campoNome(inp){
 }
 
 /* ---------- barra do usuário (tela inicial) ---------- */
-async function sairDoApp(){await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");}catch(e){}usuario=null;lista=[];listaPronta=false;view="login";render();}
+async function sairDoApp(){await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");localStorage.removeItem("ppci_ativo");}catch(e){}esquecerAberta();usuario=null;lista=[];listaPronta=false;view="login";render();}
 const irUsuarios=()=>{view="usuarios";render();window.scrollTo(0,0);};
 const irSenha=()=>{view="senha";render();window.scrollTo(0,0);};
 // nome de quem está logado: no topo, ao lado do botão dia/noite
@@ -2087,7 +2091,33 @@ async function renderUsuarios(){
 
 /* ---------- inicialização ---------- */
 async function carregarResponsaveis(){try{RESPONSAVEIS=(await api("/api/responsaveis")).map(x=>x.nome);if(view==="edit"&&repintarResp)repintarResp();}catch(e){}}
-function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}}
+function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}marcarAtivo(true);}
+/* O celular às vezes descarta a página quando se troca de app (câmera, WhatsApp, galeria…).
+   Para não pedir login de novo nem perder a vistoria, guardamos a hora do último uso
+   e a vistoria aberta (com a aba). Só pede login se o app ficou parado por mais de 30 min. */
+const PAUSA_LOGIN=30*60*1000;let ultAtivo=0;
+function marcarAtivo(forca){const t=Date.now();if(!forca&&t-ultAtivo<15000)return;ultAtivo=t;if(!usuario&&!forca)return;try{localStorage.setItem("ppci_ativo",String(t));}catch(e){}}
+["pointerdown","keydown","touchstart"].forEach(ev=>document.addEventListener(ev,()=>marcarAtivo(),{passive:true,capture:true}));
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&usuario)marcarAtivo(true);});
+window.addEventListener("pagehide",()=>{if(usuario)marcarAtivo(true);if(view==="edit"&&cur)gravarAberta();});
+let abertaT=null;
+function gravarAberta(){clearTimeout(abertaT);abertaT=null;if(view!=="edit"||!cur||!usuario)return;
+ const base={u:String(usuario.id),aba,voltar,id:cur.id,t:Date.now()};
+ try{localStorage.setItem("ppci_vistoria",JSON.stringify(Object.assign({c:cur},base)));}
+ catch(e){try{localStorage.setItem("ppci_vistoria",JSON.stringify(base));}catch(e2){}}}
+function lembrarAberta(){clearTimeout(abertaT);abertaT=setTimeout(gravarAberta,500);}
+function esquecerAberta(){clearTimeout(abertaT);abertaT=null;try{localStorage.removeItem("ppci_vistoria");}catch(e){}}
+async function reabrirVistoria(){
+ let v=null;try{v=JSON.parse(localStorage.getItem("ppci_vistoria")||"null");}catch(e){}
+ if(!v||v.u!==String(usuario.id)||Date.now()-v.t>7*24*3600*1000){esquecerAberta();return false;}
+ try{lista=(await api("/api/checklists")).filter(x=>!excluindo.has(x.id));listaPronta=true;ultimaCarga=Date.now();}catch(e){if(!v.c)return false;}
+ const srv=lista.find(x=>x.id===v.id);
+ let c=v.c&&(!srv||!srv.updatedAt||srv.updatedAt<=v.t)?v.c:srv;
+ if(!c){esquecerAberta();return false;}
+ cur=JSON.parse(JSON.stringify(c));aba=v.aba||"dados";voltar=v.voltar==="list"?"list":"home";view="edit";render();
+ if(v.c&&c===v.c&&!checklistVazio(cur))salvarAgora();
+ return true;
+}
 async function iniciarSessao(){
  let e;try{e=await api("/api/estado");}catch(er){
   const app=$("#app");app.innerHTML="";
@@ -2096,10 +2126,11 @@ async function iniciarSessao(){
  if(e.precisaSetup){view="setup";render();return;}
  if(!e.usuario){view="login";render();return;}
  // app foi fechado e aberto de novo (a marca da aba sumiu): encerra a sessão e pede login
- let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1";}catch(er){aberto=true;}
+ let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1"||Date.now()-Number(localStorage.getItem("ppci_ativo")||0)<PAUSA_LOGIN;}catch(er){aberto=true;}
  if(!aberto){try{await api("/api/logout",{method:"POST"});}catch(er){}view="login";render();return;}
- usuario=e.usuario;userId=String(usuario.id);
+ usuario=e.usuario;userId=String(usuario.id);marcarAberto();
  if(pendente){const pd=pendente;pendente=null;cur=pd.c;aba=pd.aba;voltar=pd.voltar;view="edit";render();salvarAgora();recarregar(true);toast("Vistoria recuperada e salva.");return;}
+ if(await reabrirVistoria()){carregarResponsaveis();return;}
  view="home";listaPronta=false;render();recarregar(true);
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&(view==="home"||view==="list"))recarregar();});
