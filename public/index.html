@@ -1981,7 +1981,7 @@ function campoNome(inp){
 }
 
 /* ---------- barra do usuário (tela inicial) ---------- */
-async function sairDoApp(){await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");localStorage.removeItem("ppci_ativo");}catch(e){}esquecerAberta();usuario=null;lista=[];listaPronta=false;view="login";render();}
+async function sairDoApp(){await salvarAgora();try{await api("/api/logout",{method:"POST"});}catch(e){}try{sessionStorage.removeItem("ppci_aberto");localStorage.removeItem("ppci_camera");}catch(e){}esquecerAberta();usuario=null;lista=[];listaPronta=false;view="login";render();}
 const irUsuarios=()=>{view="usuarios";render();window.scrollTo(0,0);};
 const irSenha=()=>{view="senha";render();window.scrollTo(0,0);};
 // nome de quem está logado: no topo, ao lado do botão dia/noite
@@ -2032,13 +2032,13 @@ function telaAuth(titulo,sub,campos,botao,acao){
 function renderLogin(){
  telaAuth("Entrar","Use o usuário e a senha que o administrador cadastrou.",
   [["l_usuario","Usuário","text",{autocapitalize:"none",autocomplete:"username"}],["l_senha","Senha","password",{autocomplete:"current-password"}]],"Entrar",
-  async v=>{await api("/api/login",{method:"POST",body:JSON.stringify({usuario:v.l_usuario,senha:v.l_senha})});marcarAberto();await iniciarSessao();});
+  async v=>{await api("/api/login",{method:"POST",body:JSON.stringify({usuario:v.l_usuario,senha:v.l_senha})});marcarAberto();acabouDeEntrar=true;await iniciarSessao();});
 }
 function renderSetup(){
  telaAuth("Primeiro acesso","Crie o usuário administrador. Depois ele cadastra os vistoriadores em Usuários.",
   [["s_nome","Seu nome"],["s_usuario","Usuário de acesso","text",{autocapitalize:"none",placeholder:"ex.: ISAIAS"}],["s_senha","Senha (mínimo 6 caracteres)","password",{autocomplete:"new-password"}],["s_senha2","Repita a senha","password",{autocomplete:"new-password"}]],"Criar administrador",
   async v=>{if(v.s_senha!==v.s_senha2)throw new Error("As senhas não são iguais.");
-   await api("/api/setup",{method:"POST",body:JSON.stringify({nome:v.s_nome.trim(),usuario:v.s_usuario.trim(),senha:v.s_senha})});marcarAberto();await iniciarSessao();});
+   await api("/api/setup",{method:"POST",body:JSON.stringify({nome:v.s_nome.trim(),usuario:v.s_usuario.trim(),senha:v.s_senha})});marcarAberto();acabouDeEntrar=true;await iniciarSessao();});
 }
 
 /* ---------- trocar senha ---------- */
@@ -2168,15 +2168,14 @@ async function renderUsuarios(){
 
 /* ---------- inicialização ---------- */
 async function carregarResponsaveis(){try{RESPONSAVEIS=(await api("/api/responsaveis")).map(x=>x.nome);if(view==="edit"&&repintarResp)repintarResp();}catch(e){}}
-function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}marcarAtivo(true);}
-/* O celular às vezes descarta a página quando se troca de app (câmera, WhatsApp, galeria…).
-   Para não pedir login de novo nem perder a vistoria, guardamos a hora do último uso
-   e a vistoria aberta (com a aba). Só pede login se o app ficou parado por mais de 30 min. */
-const PAUSA_LOGIN=30*60*1000;let ultAtivo=0;
-function marcarAtivo(forca){const t=Date.now();if(!forca&&t-ultAtivo<15000)return;ultAtivo=t;if(!usuario&&!forca)return;try{localStorage.setItem("ppci_ativo",String(t));}catch(e){}}
-["pointerdown","keydown","touchstart"].forEach(ev=>document.addEventListener(ev,()=>marcarAtivo(),{passive:true,capture:true}));
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&usuario)marcarAtivo(true);});
-window.addEventListener("pagehide",()=>{if(usuario)marcarAtivo(true);if(view==="edit"&&cur)gravarAberta();});
+function marcarAberto(){try{sessionStorage.setItem("ppci_aberto","1");}catch(e){}}
+/* Fechou o app → pede usuário e senha de novo.
+   Exceção: ao abrir a câmera/galeria o celular às vezes descarta a página; nesse caso
+   (até 10 min) volta direto, sem login. A vistoria aberta fica guardada para não perder nada. */
+const CAMERA_MAX=10*60*1000;let acabouDeEntrar=false;
+document.addEventListener("click",e=>{const t=e.target;if(usuario&&t&&t.tagName==="INPUT"&&t.type==="file"){try{localStorage.setItem("ppci_camera",String(Date.now()));}catch(er){}}},true);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(()=>{try{localStorage.removeItem("ppci_camera");}catch(e){}},1500);});
+window.addEventListener("pagehide",()=>{if(view==="edit"&&cur)gravarAberta();});
 let abertaT=null;
 function gravarAberta(){clearTimeout(abertaT);abertaT=null;if(view!=="edit"||!cur||!usuario)return;
  const base={u:String(usuario.id),aba,voltar,id:cur.id,t:Date.now()};
@@ -2184,11 +2183,14 @@ function gravarAberta(){clearTimeout(abertaT);abertaT=null;if(view!=="edit"||!cu
  catch(e){try{localStorage.setItem("ppci_vistoria",JSON.stringify(base));}catch(e2){}}}
 function lembrarAberta(){clearTimeout(abertaT);abertaT=setTimeout(gravarAberta,500);}
 function esquecerAberta(){clearTimeout(abertaT);abertaT=null;try{localStorage.removeItem("ppci_vistoria");}catch(e){}}
-async function reabrirVistoria(){
+const semMeta=c=>{const o=Object.assign({},c);delete o.updatedAt;Object.keys(o).forEach(k=>{if(k[0]==="_")delete o[k];});return JSON.stringify(o);};
+async function reabrirVistoria(soSePendente){
  let v=null;try{v=JSON.parse(localStorage.getItem("ppci_vistoria")||"null");}catch(e){}
  if(!v||v.u!==String(usuario.id)||Date.now()-v.t>7*24*3600*1000){esquecerAberta();return false;}
  try{lista=(await api("/api/checklists")).filter(x=>!excluindo.has(x.id));listaPronta=true;ultimaCarga=Date.now();}catch(e){if(!v.c)return false;}
  const srv=lista.find(x=>x.id===v.id);
+ // entrou de novo depois de fechar o app: só volta para a vistoria se ficou algo sem salvar
+ if(soSePendente&&(!v.c||(srv&&semMeta(srv)===semMeta(v.c))||(!srv&&checklistVazio(v.c)))){esquecerAberta();return false;}
  let c=v.c&&(!srv||!srv.updatedAt||srv.updatedAt<=v.t)?v.c:srv;
  if(!c){esquecerAberta();return false;}
  cur=JSON.parse(JSON.stringify(c));aba=v.aba||"dados";voltar=v.voltar==="list"?"list":"home";view="edit";render();
@@ -2203,11 +2205,12 @@ async function iniciarSessao(){
  if(e.precisaSetup){view="setup";render();return;}
  if(!e.usuario){view="login";render();return;}
  // app foi fechado e aberto de novo (a marca da aba sumiu): encerra a sessão e pede login
- let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1"||Date.now()-Number(localStorage.getItem("ppci_ativo")||0)<PAUSA_LOGIN;}catch(er){aberto=true;}
+ let aberto=false;try{aberto=sessionStorage.getItem("ppci_aberto")==="1"||Date.now()-Number(localStorage.getItem("ppci_camera")||0)<CAMERA_MAX;localStorage.removeItem("ppci_camera");}catch(er){aberto=true;}
  if(!aberto){try{await api("/api/logout",{method:"POST"});}catch(er){}view="login";render();return;}
  usuario=e.usuario;userId=String(usuario.id);marcarAberto();
  if(pendente){const pd=pendente;pendente=null;cur=pd.c;aba=pd.aba;voltar=pd.voltar;view="edit";render();salvarAgora();recarregar(true);toast("Vistoria recuperada e salva.");return;}
- if(await reabrirVistoria()){carregarResponsaveis();return;}
+ const novoLogin=acabouDeEntrar;acabouDeEntrar=false;
+ if(await reabrirVistoria(novoLogin)){carregarResponsaveis();if(novoLogin)toast("Vistoria que não tinha sido salva foi recuperada.");return;}
  view="home";listaPronta=false;render();recarregar(true);
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&(view==="home"||view==="list"))recarregar();});
