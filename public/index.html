@@ -297,6 +297,20 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .amb-itens:empty{display:none}
 .amb-it{display:flex;gap:8px;align-items:center}
 .amb-it i{font-style:normal;color:#fff;font-weight:700;font-size:10px;min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;flex:none}
+.amb-it-tog{width:100%;justify-content:flex-start;margin-top:8px;border-color:var(--accent);color:var(--accent)}
+.amb-it-tog .seta{margin-left:auto}
+.amb-it-tog[aria-expanded="true"]{background:var(--accent);color:var(--on-accent)}
+.amb-itpainel{display:grid;gap:8px;padding:10px;border:1px solid var(--accent);border-radius:12px;background:var(--sunken);margin:6px 0 10px}
+.amb-itpainel[hidden]{display:none}
+.amb-it-lin{width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+.amb-it-lin span{flex:1}
+.amb-it-lin b{font-size:12px;color:var(--accent)}
+.amb-it-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.amb-itpainel .amb-el{grid-template-columns:1fr 1fr 1fr;background:var(--surface);border-color:var(--accent)}
+.amb-itpainel .amb-el .amb-ob{grid-column:1/-1}
+.amb-el-bt{grid-column:1/-1;display:flex;gap:8px}
+.amb-el-bt .amb-el-ok{flex:1}
+@media (max-width:480px){.amb-itpainel .amb-el{grid-template-columns:1fr 1fr}}
 .amb-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
 .amb-leg span{display:inline-flex;gap:6px;align-items:center}
 .amb-leg i{font-style:normal;color:#fff;font-weight:700;font-size:9px;min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center}
@@ -1196,7 +1210,7 @@ function svgParaPng(svg,w,h){return new Promise((res,rej)=>{const im=new Image()
  im.onload=()=>{const cv=document.createElement("canvas");cv.width=w*2;cv.height=h*2;const x=cv.getContext("2d");x.drawImage(im,0,0,w*2,h*2);URL.revokeObjectURL(u);res(cv.toDataURL("image/png"));};
  im.onerror=e=>{URL.revokeObjectURL(u);rej(e);};im.src=u;});}
 
-let ambSel=0,parSel=null,ferA="sel",itemA="extintor";const histA={};
+let ambSel=0,parSel=null,ferA="sel",itemA="extintor",itensAb=false,elSel=null;const histA={};
 function mascaraMetros(inp){
  if(inp._m)return;inp._m=true;inp.setAttribute("autocomplete","off");
  if(inp.value&&!inp.readOnly)inp.value=fmtM(numBR(inp.value));
@@ -1233,7 +1247,9 @@ function blocoAmbientes(c){
   const dicaA=h("div",{class:"amb-fer-dica"});
   const btsA={};
   const ferBar=h("div",{class:"amb-fer"},h("div",{class:"tools"},...FERS.map(([k,t])=>btsA[k]=h("button",{type:"button",class:"btn","aria-pressed":ferA===k?"true":"false",onclick:()=>usarFer(k)},t)),
-   h("button",{type:"button",class:"btn",onclick:()=>{const u=hist.pop();if(!u){toast("Nada para desfazer.");return;}Object.assign(a,JSON.parse(u));agendarSalvar();pintar();}},"Desfazer")),itemSelA,dicaA);
+   h("button",{type:"button",class:"btn",onclick:()=>{const u=hist.pop();if(!u){toast("Nada para desfazer.");return;}Object.assign(a,JSON.parse(u));agendarSalvar();pintar();}},"Desfazer")),itemSelA,dicaA,
+   h("button",{type:"button",class:"btn amb-it-tog","aria-expanded":itensAb?"true":"false",onclick:()=>{itensAb=!itensAb;pintar();}},ico("plus"),"Portas, janelas e itens"+(a.elementos.length?" ("+a.elementos.length+")":""),h("span",{class:"seta"},itensAb?"▴":"▾")));
+  const painelIt=h("div",{class:"amb-itpainel",hidden:!itensAb});
   function usarFer(k){ferA=k;Object.entries(btsA).forEach(([kk,b])=>b.setAttribute("aria-pressed",kk===k?"true":"false"));itemSelA.hidden=k!=="item";dicaA.textContent=DICA[k];desenho.style.touchAction=k==="sel"?"auto":"none";desenho.style.cursor=k==="sel"?"default":"crosshair";mIni=null;pv="";redesenhar();}
   let vFix=null,pv="",mIni=null,arraste=null,traco=null;const ultView={};
   const mundo=e=>{const sv=desenho.querySelector("svg");const rc=sv.getBoundingClientRect();const vx=(e.clientX-rc.left)*640/rc.width,vy=(e.clientY-rc.top)*440/rc.height;const V=vFix||ultView;return {x:(vx-V.ox)/V.s,y:(vy-V.oy)/V.s,vx,vy,V};};
@@ -1305,7 +1321,7 @@ function blocoAmbientes(c){
   // observações do ambiente (ao lado do desenho no computador, embaixo no celular)
   const obsA=h("textarea",{class:"amb-obs",placeholder:"Ex.: parede B com infiltração; ar-condicionado sem dreno; pé-direito menor perto da porta…"});obsA.value=a.obs||"";
   obsA.oninput=()=>{a.obs=obsA.value;agendarSalvar();};
-  card.append(h("div",{class:"amb-vis"},h("div",{class:"amb-vis-d"},ferBar,desenho,legItens,resumo),h("label",{class:"f amb-vis-o"},h("span",{},"Observações do ambiente"),obsA)));
+  card.append(h("div",{class:"amb-vis"},h("div",{class:"amb-vis-d"},ferBar,desenho,painelIt,legItens,resumo),h("label",{class:"f amb-vis-o"},h("span",{},"Observações do ambiente"),obsA)));
   // paredes
   const lp=h("div",{class:"amb-lista"});
   a.paredes.forEach((p,i)=>{
@@ -1339,8 +1355,11 @@ function blocoAmbientes(c){
    h("div",{class:"amb-nova"},pad,h("div",{class:"amb-nova-t"},h("strong",{},"Nova parede "+letra(a.paredes.length)),h("p",{},"1. Digite a medida no meio."),h("p",{},"2. Toque na seta para onde a parede vai."),h("p",{class:"dica"},ini))));
   // elementos
   const le=h("div",{class:"amb-lista"});
+  if(elSel!=null&&elSel>=a.elementos.length)elSel=null;
+  const txIt=itensAmbTexto(a);
   a.elementos.forEach((el,k)=>{
    const T=ELEM[el.tipo]||ELEM.outro;
+   if(k!==elSel){const t=txIt[k];le.append(h("button",{type:"button",class:"amb-it amb-it-lin",onclick:()=>{elSel=k;pintar();}},h("i",{style:"background:"+t.cor},t.marca),h("span",{},t.txt),h("b",{},"Editar")));return;}
    const tipo=h("select",{},Object.entries(ELEM).map(([v,t])=>{const op=h("option",{value:v},t.n);if(v===el.tipo)op.selected=true;return op;}));
    tipo.onchange=()=>{el.tipo=tipo.value;el.larg=ELEM[el.tipo].larg;el.alt=ELEM[el.tipo].alt;agendarSalvar();pintar();};
    const par=h("select",{},a.paredes.map((p,i)=>{const op=h("option",{value:i},"Parede "+letra(i));if(i===el.parede)op.selected=true;return op;}));
@@ -1357,11 +1376,13 @@ function blocoAmbientes(c){
     h("label",{class:"f"},h("span",{},"Largura (m)"),lg),
     h("label",{class:"f"},h("span",{},"Altura (m)"),al),
     h("label",{class:"f amb-ob"},h("span",{},"Descrição"),ob),
-    h("button",{type:"button",class:"obs-del","aria-label":"Remover "+T.n,onclick:()=>{a.elementos.splice(k,1);agendarSalvar();pintar();}},"×")));
+    h("div",{class:"amb-el-bt"},h("button",{type:"button",class:"btn danger","aria-label":"Remover "+T.n,onclick:()=>{a.elementos.splice(k,1);elSel=null;agendarSalvar();pintar();}},"Remover"),
+     h("button",{type:"button",class:"btn primary amb-el-ok",onclick:()=>{elSel=null;pintar();}},"Pronto"))));
   });
-  const addE=h("button",{type:"button",class:"btn",onclick:()=>{if(!a.paredes.length){toast("Crie as paredes primeiro.");return;}a.elementos.push({tipo:"porta",parede:parSel!=null?parSel:0,pos:"0,30",larg:"0,80",alt:"2,10",obs:""});agendarSalvar();pintar();}},ico("plus"),"Porta, janela, ar, extintor…");
-  card.append(h("h4",{},"Portas, janelas e itens do ambiente"),le,addE);
-  card.append(h("div",{class:"amb-leg"},...Object.entries(ELEM).filter(([,t])=>!t.abre).map(([,t])=>h("span",{},h("i",{style:"background:"+t.cor},t.sig),t.n))));
+  const addE=h("button",{type:"button",class:"btn",onclick:()=>{if(!a.paredes.length){toast("Crie as paredes primeiro.");return;}a.elementos.push({tipo:"porta",parede:parSel!=null?parSel:0,pos:"0,30",larg:"0,80",alt:"2,10",obs:""});elSel=a.elementos.length-1;itensAb=true;agendarSalvar();pintar();}},ico("plus"),"Novo item");
+  painelIt.append(le,h("div",{class:"amb-it-acoes"},addE,h("button",{type:"button",class:"btn ghost",onclick:()=>{itensAb=false;elSel=null;pintar();}},"Fechar")),
+   elSel!=null?"":h("div",{class:"amb-leg"},...Object.entries(ELEM).filter(([,t])=>!t.abre).map(([,t])=>h("span",{},h("i",{style:"background:"+t.cor},t.sig),t.n))));
+  if(itensAb)legItens.hidden=true;
   wrap.querySelectorAll("[data-m]").forEach(mascaraMetros);
   if(parSel!=null&&parSel>=a.paredes.length)parSel=null;
   usarFer(ferA);marcarLista();
