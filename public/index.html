@@ -208,6 +208,11 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .sec{margin-top:22px;scroll-margin-top:150px}
 .sec-h{display:flex;align-items:baseline;gap:10px;padding-bottom:8px;border-bottom:2px solid var(--ink);margin-bottom:4px}
 .sec-h h2{font-size:24px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;flex:1}
+.sec-h .med-fotos-btn{align-self:center;position:relative;gap:6px;border-color:var(--accent);color:var(--accent)}
+.sec-h .med-fotos-btn svg{width:18px;height:18px}
+.sec-h .med-fotos-btn b{position:absolute;top:-7px;right:-7px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:10px;border-radius:999px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px}
+.sec-h .med-fotos-btn b:empty{display:none}
+.med-thumbs{padding:10px 0 2px}
 .sec-h .cnt{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .tag-new{font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;vertical-align:middle;margin-left:6px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding-top:12px}
@@ -258,6 +263,19 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .amb-vira button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 @media (max-width:480px){.amb-vira button{min-width:52px;padding:0 10px;font-size:16px}.amb-vira .vira-tx{display:none}.amb-inicio{width:auto;min-width:106px}.amb-len input{width:84px}}
 .amb-len{display:flex;align-items:center;gap:6px}
+.amb-dir{width:auto;min-width:140px;padding:9px 8px}
+@media (max-width:480px){.amb-dir{min-width:0;width:128px}}
+.amb-nova{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px;border:1px dashed var(--accent);border-radius:12px;background:var(--sunken)}
+.amb-pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:6px}
+.amb-pad-b{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-size:28px;line-height:1;display:grid;place-items:center;padding:0;cursor:pointer}
+.amb-pad-b:active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.amb-pad-c{display:grid;place-items:center;gap:2px;border:2px solid var(--accent);border-radius:12px;background:var(--surface);padding:4px}
+.amb-pad-c input{width:100%;border:0;background:transparent;text-align:center;font-family:var(--mono);font-size:16px;font-weight:700;padding:2px;box-shadow:none}
+.amb-pad-c span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.amb-nova-t{flex:1;min-width:160px}
+.amb-nova-t strong{display:block;font-size:15px;margin-bottom:4px}
+.amb-nova-t p{margin:2px 0;font-size:13px}
+.amb-nova-t .dica{color:var(--muted);font-size:12px;margin-top:6px}
 .amb-len input{width:100px}
 .amb-el{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.2fr) auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--sunken)}
 .amb-el .obs-del{height:42px}
@@ -275,6 +293,10 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .pl-dica{font-size:12.5px;color:var(--muted)}
 .pl-area{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#E9ECEF;touch-action:none}
 .pl-cv{display:block;touch-action:none}
+.amb-itens{display:grid;gap:4px;font-size:13px}
+.amb-itens:empty{display:none}
+.amb-it{display:flex;gap:8px;align-items:center}
+.amb-it i{font-style:normal;color:#fff;font-weight:700;font-size:10px;min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;flex:none}
 .amb-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
 .amb-leg span{display:inline-flex;gap:6px;align-items:center}
 .amb-leg i{font-style:normal;color:#fff;font-weight:700;font-size:9px;min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center}
@@ -391,7 +413,7 @@ const SECOES = [
   ["f_equip","Equipamentos (TAGs de identificação)"],
   ["f_equip2","Caldeira, compressor, gerador, fornos",1]
  ]},
- {id:"medicoes", nav:"Medições", titulo:"Medições", itens:[
+ {id:"medicoes", nav:"Medições", titulo:"Medições", semLista:true, itens:[ // lista antiga: só aparece no PDF de vistorias que já tinham preenchido
   ["paredes","Paredes"],["viga","Viga aparente"],["pilar","Pilar aparente"],["muretas","Muretas"],
   ["vazada","Identificar / medir área vazada"],["vazada2","Cobogó, grades…",1],
   ["portas","Portas e portões","Sentido e tipo: enrolar, correr, abrir"],
@@ -440,7 +462,7 @@ const SECOES = [
  ]}
 ];
 SECOES.forEach(s=>{ s.itens = s.itens.map(a=>({id:a[0], label:a[1], hint:typeof a[2]==="string"?a[2]:"", sub:a[2]===1||a[3]===1, novo:a[4]===1||!!s.novo})); });
-const TODOS = SECOES.flatMap(s=>s.itens.map(i=>({...i, secao:s})));
+const TODOS = SECOES.filter(s=>!s.semLista).flatMap(s=>s.itens.map(i=>({...i, secao:s})));
 const MAT = {
  piso:{t:"Piso", o:[["1","Concreto"],["2","Cerâmico"],["3","Vinílico"],["4","Carpete"],["5","Calçamento"],["6","Paralelepípedo"]]},
  parede:{t:"Parede", o:[["A","Bloco cerâmico"],["B","Bloco concreto"],["C","Revest. cerâmico"],["D","Revest. Eucatex"],["E","Revest. tecido"],["F","Gesso"],["G","Drywall"],["H","MDF / madeira"],["I","Metálica"],["J","Alv. rebocada e pintada"]]},
@@ -841,9 +863,9 @@ function renderEditor(){
 
  /* Seções com itens */
  SECOES.forEach(s=>{
-  const sec=h("section",{class:"sec",id:"sec_"+s.id},h("div",{class:"sec-h"},h("h2",{},s.titulo,s.novo?h("span",{class:"tag-new"},"novo"):null),h("span",{class:"cnt","data-scnt":s.id})));
-  if(s.id==="medicoes")sec.append(blocoAmbientes(c),blocoPlantas(c));
-  s.itens.forEach(it=>sec.append(itemRow(it,s)));
+  const sec=h("section",{class:"sec",id:"sec_"+s.id},h("div",{class:"sec-h"},h("h2",{},s.titulo,s.novo?h("span",{class:"tag-new"},"novo"):null),s.semLista?null:h("span",{class:"cnt","data-scnt":s.id})));
+  if(s.id==="medicoes"){const fm=fotosMedicoes(c);sec.querySelector(".sec-h").append(fm.botao);sec.append(fm.galeria,blocoAmbientes(c),blocoPlantas(c),croqui());}
+  if(!s.semLista)s.itens.forEach(it=>sec.append(itemRow(it,s)));
   // itens adicionados nesta vistoria
   c.custom=c.custom||{};
   const boxCustom=h("div",{class:"custom-itens"});
@@ -877,7 +899,6 @@ function renderEditor(){
  const sf=h("section",{class:"sec",id:"sec_fechamento"},h("div",{class:"sec-h"},h("h2",{},"Fechamento")));
  const og=h("textarea",{id:"f_obsgeral",placeholder:"Observações gerais da vistoria, pendências, o que voltar para medir…"});og.value=c.obsGeral||"";
  og.oninput=()=>{c.obsGeral=og.value;agendarSalvar();};
- sf.append(croqui());
  sf.append(h("div",{class:"grid"},h("label",{class:"f wide"},h("span",{},"Observações gerais"),og)));
  sf.append(h("div",{class:"signs"},assinatura("cad","Responsável cadastro"),assinatura("edif","Responsável edificação")));
  const btnPdf=h("button",{class:"btn",type:"button",id:"btnPdf",onclick:()=>gerarPDF(btnPdf)},ico("pdf"),"Baixar PDF");
@@ -981,6 +1002,31 @@ async function processarFoto(file,itemId){
  }
  return {data:cv.toDataURL("image/jpeg",q),w:cv.width,h:cv.height,t:Date.now()};
 }
+/* ---------- fotos gerais da aba Medições ---------- */
+const MED_FOTOS={id:"med_fotos",label:"Fotos das medições"};
+function fotosMedicoes(c){
+ c.itens=c.itens||{};
+ const file=h("input",{type:"file",accept:"image/*",capture:"environment",multiple:true,hidden:true});
+ const n=h("b",{});
+ const botao=h("button",{type:"button",class:"btn med-fotos-btn","aria-label":"Registrar fotos das medições",onclick:()=>file.click(),html:ICON.cam});
+ botao.append(h("span",{},"Fotos"),n,file);
+ const galeria=h("div",{class:"thumbs med-thumbs"});
+ const pintar=()=>{galeria.innerHTML="";const fs=((c.itens.med_fotos||{}).fotos)||[];n.textContent=fs.length||"";
+  fs.forEach((f,idx)=>galeria.append(h("button",{type:"button","aria-label":"Ver foto "+(idx+1),onclick:()=>verFoto(MED_FOTOS,idx,pintar)},h("img",{src:fotoSrc(f),alt:"Foto "+(idx+1),loading:"lazy"}))));
+  atualizarProgresso();};
+ file.onchange=async()=>{
+  const arqs=[...file.files];file.value="";if(!arqs.length)return;
+  for(const arq of arqs){
+   const ph=h("button",{type:"button",class:"up"},"Enviando…");galeria.append(ph);
+   try{const foto=await processarFoto(arq,"med_fotos");const o=c.itens.med_fotos||(c.itens.med_fotos={s:"",obs:"",fotos:[]});o.fotos=o.fotos||[];o.fotos.push(foto);agendarSalvar();}
+   catch(e){toast(e&&e.msg||"Não foi possível adicionar a foto.");}
+   ph.remove();
+  }
+  pintar();
+ };
+ pintar();
+ return {botao,galeria};
+}
 function verFoto(it,idx,repaint){
  const o=cur.itens[it.id];if(!o||!o.fotos[idx])return;const f=o.fotos[idx];
  let arm=false;
@@ -1015,11 +1061,16 @@ function cantoIni(a,i){const n=(a.paredes||[]).length;if(i===0)return n>1&&geoAm
 const numBR=v=>{const n=parseFloat(String(v==null?"":v).replace(/\s/g,"").replace(",","."));return isFinite(n)?n:0;};
 const fmtM=n=>(Math.round(n*100)/100).toFixed(2).replace(".",",");
 const letra=i=>{let s="";i++;while(i>0){const r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26);}return s;};
+// direções na tela (graus: 0 = direita, 90 = para baixo)
+const DIRS=[[270,"↑","Para cima","Cima"],[315,"↗","Cima-direita","Cima-dir."],[0,"→","Para a direita","Direita"],[45,"↘","Baixo-direita","Baixo-dir."],[90,"↓","Para baixo","Baixo"],[135,"↙","Baixo-esquerda","Baixo-esq."],[180,"←","Para a esquerda","Esquerda"],[225,"↖","Cima-esquerda","Cima-esq."]];
+const normAng=g=>((Math.round(g)%360)+360)%360;
+// fixa a direção atual de todas as paredes (assim mudar uma não gira as outras)
+function fixarDirecoes(a){const G=geoAmb(a);let k=0;(a.paredes||[]).forEach(p=>{if(p.fecha){k++;return;}const sg=G.segs[k++];if(sg)p.dir=normAng(sg.hd);});}
 function geoAmb(a){
  let x=0,y=0,hd=a.hd0||0;const pts=[[0,0]],segs=[];
  (a.paredes||[]).forEach((p,i)=>{
   if(p.fecha){const L=Math.hypot(x,y);if(L<0.005)return;hd=Math.atan2(-y,-x)*180/Math.PI;segs.push({x1:x,y1:y,x2:0,y2:0,len:L,hd,diag:true});x=0;y=0;pts.push([0,0]);return;}
-  if(i>0)hd+=(p.vira==="e"?-90:90);const L=numBR(p.len),r=hd*Math.PI/180;
+  if(p.dir!=null&&p.dir!=="")hd=+p.dir;else if(i>0)hd+=(p.vira==="e"?-90:90);const L=numBR(p.len),r=hd*Math.PI/180;
   const nx=x+L*Math.cos(r),ny=y+L*Math.sin(r);segs.push({x1:x,y1:y,x2:nx,y2:ny,len:L,hd});x=nx;y=ny;pts.push([x,y]);});
  const gap=Math.hypot(x,y);const fechado=segs.length>=3&&gap<0.02;
  let area=0;if(fechado){for(let i=0;i<pts.length-1;i++)area+=pts[i][0]*pts[i+1][1]-pts[i+1][0]*pts[i][1];area=Math.abs(area)/2;}
@@ -1050,9 +1101,11 @@ function svgAmb(a,pal,W=640,H=440,op={}){
  const s=V.s,ox=V.ox,oy=V.oy;
  const X=x=>ox+x*s,Y=y=>oy+y*s;
  let o=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Arial,Helvetica,sans-serif"><rect width="${W}" height="${H}" fill="${pal.fundo}"/>`;
- // grade de 1 m
- for(let gx=Math.ceil((0-ox)/s);X(gx)<W;gx++)o+=`<line x1="${X(gx)}" y1="0" x2="${X(gx)}" y2="${H}" stroke="${pal.grade}" stroke-width="1"/>`;
- for(let gy=Math.ceil((0-oy)/s);Y(gy)<H;gy++)o+=`<line x1="0" y1="${Y(gy)}" x2="${W}" y2="${Y(gy)}" stroke="${pal.grade}" stroke-width="1"/>`;
+ // grade: 1 m; em salas grandes, de 5 ou 10 m (para não virar um borrão)
+ const gp=s>=14?1:s>=3?5:10;
+ for(let gx=Math.ceil((0-ox)/s/gp)*gp;X(gx)<W;gx+=gp)o+=`<line x1="${X(gx)}" y1="0" x2="${X(gx)}" y2="${H}" stroke="${pal.grade}" stroke-width="1"/>`;
+ for(let gy=Math.ceil((0-oy)/s/gp)*gp;Y(gy)<H;gy+=gp)o+=`<line x1="0" y1="${Y(gy)}" x2="${W}" y2="${Y(gy)}" stroke="${pal.grade}" stroke-width="1"/>`;
+ if(gp>1)o+=`<text x="${W-10}" y="${H-10}" text-anchor="end" font-size="11" fill="${pal.muted}">cada quadrado = ${gp} m</text>`;
  // piso (se fechado)
  if(G.fechado)o+=`<polygon points="${G.pts.map(p=>X(p[0])+","+Y(p[1])).join(" ")}" fill="${pal.acc}" fill-opacity=".06"/>`;
  // paredes
@@ -1078,13 +1131,15 @@ function svgAmb(a,pal,W=640,H=440,op={}){
  G.segs.forEach((g,i)=>{if(!g.len)return;const I=info(i);const off=34+Math.abs(I.nx)*24;const mx=X((g.x1+g.x2)/2)-I.nx*off,my=Y((g.y1+g.y2)/2)-I.ny*off;
   const sl=op.sel===i;
   o+=`<g${op.hit?` data-w="${i}" style="cursor:pointer"`:""}><rect x="${mx-36}" y="${my-10}" width="72" height="20" rx="10" fill="${sl?pal.acc:pal.fundo}" stroke="${sl?pal.acc:pal.grade}"/><text x="${mx}" y="${my+4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="${sl?"#fff":pal.texto}">${letra(i)} · ${fmtM(g.len)} m</text></g>`;});
- // elementos
+ // elementos (portas/janelas/portões viram um número; o texto vai na lista ao lado)
+ let nAb=0;
  (a.elementos||[]).forEach(el=>{
   const i=Math.min(Math.max(0,el.parede|0),G.segs.length-1);if(i<0||!G.segs[i]||!G.segs[i].len)return;const I=info(i),g=I.g;const T=ELEM[el.tipo]||ELEM.outro;
   // cota: do canto onde a parede começa até o item
-  const cota=(d0)=>{if(d0<0.01)return;const k=24;const sx=X(g.x1)+I.nx*k,sy=Y(g.y1)+I.ny*k,ex=X(g.x1+I.dx*d0)+I.nx*k,ey=Y(g.y1+I.dy*d0)+I.ny*k;
+  const cota=(d0)=>{if(d0<0.01)return;const k=16;const sx=X(g.x1)+I.nx*k,sy=Y(g.y1)+I.ny*k,ex=X(g.x1+I.dx*d0)+I.nx*k,ey=Y(g.y1+I.dy*d0)+I.ny*k;
    o+=`<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${pal.acc}" stroke-width="1.2" stroke-dasharray="3 3"/>`;
    for(const [qx,qy] of [[sx,sy],[ex,ey]])o+=`<line x1="${qx-I.nx*5}" y1="${qy-I.ny*5}" x2="${qx+I.nx*5}" y2="${qy+I.ny*5}" stroke="${pal.acc}" stroke-width="1.2"/>`;
+   if(Math.hypot(ex-sx,ey-sy)<46)return; // trecho curto: a medida fica só na lista
    const t=fmtM(d0)+" m",mx=(sx+ex)/2+I.nx*9,my=(sy+ey)/2+I.ny*9;o+=`<text x="${mx}" y="${my+3.5}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${pal.acc}">${t}</text>`;};
   if(T.abre){
    const lg=Math.min(numBR(el.larg)||numBR(T.larg),g.len);let d0=Math.min(Math.max(0,numBR(el.pos)),Math.max(0,g.len-lg));
@@ -1099,11 +1154,8 @@ function svgAmb(a,pal,W=640,H=440,op={}){
    else {o+=`<line x1="${X(ax)}" y1="${Y(ay)}" x2="${X(bx)}" y2="${Y(by)}" stroke="${cor}" stroke-width="2.5" stroke-dasharray="7 4"/>`;}
    // cota da abertura, do lado de fora
    cota(d0);
-   const altA=numBR(el.alt);
-   const nome=(el.tipo==="porta"?"Porta":el.tipo==="janela"?"Janela":"Portão")+" "+fmtM(lg)+(altA?" × "+fmtM(altA):"")+" m";const tw=nome.length*5.6+14;
-   const tx=X((ax+bx)/2)-I.nx*14,ty=Y((ay+by)/2)-I.ny*14;
-   const rot=Math.abs(I.nx)>0.5?` transform="rotate(-90 ${tx} ${ty})"`:""; // em parede vertical o texto acompanha a parede
-   o+=`<g${rot}><rect x="${tx-tw/2}" y="${ty-8}" width="${tw}" height="16" rx="8" fill="${cor}"/><text x="${tx}" y="${ty+3.6}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${esc(nome)}</text></g>`;
+   nAb++;const tx=X((ax+bx)/2)+I.nx*30,ty=Y((ay+by)/2)+I.ny*30; // número dentro da sala, afastado da parede
+   o+=`<line x1="${X((ax+bx)/2)+I.nx*6}" y1="${Y((ay+by)/2)+I.ny*6}" x2="${tx-I.nx*10}" y2="${ty-I.ny*10}" stroke="${cor}" stroke-width="1"/><circle cx="${tx}" cy="${ty}" r="10.5" fill="${cor}" stroke="${pal.fundo}" stroke-width="2"/><text x="${tx}" y="${ty+3.8}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${nAb}</text>`;
   }else{
    const lgI=Math.min(numBR(el.larg),g.len);const d0=Math.min(Math.max(0,numBR(el.pos)),Math.max(0,g.len-lgI));
    const sig=el.tipo==="outro"?(String(el.obs||"?").trim().slice(0,2).toUpperCase()||"?"):T.sig;
@@ -1124,6 +1176,13 @@ function svgAmb(a,pal,W=640,H=440,op={}){
  if(op.hit)G.segs.forEach((g,i)=>{if(g.len)o+=`<line data-w="${i}" x1="${X(g.x1)}" y1="${Y(g.y1)}" x2="${X(g.x2)}" y2="${Y(g.y2)}" stroke="#000" stroke-opacity="0" stroke-width="26" style="cursor:pointer"><title>Parede ${letra(i)}</title></line>`;});
  if(G.fechado)o+=`<text x="${X(G.cx)}" y="${Y(G.cy)+5}" text-anchor="middle" font-size="15" font-weight="700" fill="${pal.muted}">${esc(fmtM(G.area))} m²</text>`;
  return o+"</svg>";
+}
+function itensAmbTexto(a){
+ let n=0;return (a.elementos||[]).map(el=>{const T=ELEM[el.tipo]||ELEM.outro;
+  const lgP=numBR(el.larg)||(T.abre?numBR(T.larg):0),alP=numBR(el.alt);
+  const marca=T.abre?String(++n):(el.tipo==="outro"?(String(el.obs||"?").trim().slice(0,2).toUpperCase()||"?"):T.sig);
+  return {marca,cor:T.abre?(el.tipo==="janela"?"#2F6FB3":"#C2391D"):T.cor,
+   txt:T.n+(lgP||alP?" "+[lgP?fmtM(lgP):"",alP?fmtM(alP):""].filter(Boolean).join(" × ")+" m":"")+" – parede "+letra(el.parede|0)+", a "+fmtM(numBR(el.pos))+" m do canto "+cantoIni(a,el.parede|0)+(String(el.obs||"").trim()?" ("+el.obs.trim()+")":"")};});
 }
 function marcasAmbSvg(a,pal,X,Y,esc){
  let o="";
@@ -1155,13 +1214,13 @@ function blocoAmbientes(c){
   const lst=c.ambientes;if(ambSel>=lst.length)ambSel=Math.max(0,lst.length-1);
   const novo=h("button",{type:"button",class:"btn primary"},ico("plus"),"Novo ambiente");
   novo.onclick=()=>{lst.push({id:"a_"+Date.now().toString(36),nome:"Ambiente "+(lst.length+1),pe:"",paredes:[],elementos:[]});ambSel=lst.length-1;agendarSalvar();pintar();setTimeout(()=>{const f=wrap.querySelector(".amb-nome");f&&f.select();},0);};
-  wrap.append(h("div",{class:"amb-h"},h("div",{},h("h3",{},"Ambientes (planta)"),h("p",{},"Monte a sala parede por parede: digite o tamanho e para que lado vira. Depois coloque portas, janelas e o que tiver na parede. A distância de cada item é medida a partir do começo da parede, no sentido em que você desenhou (o ponto vermelho é o começo da parede A).")),novo));
+  wrap.append(h("div",{class:"amb-h"},h("div",{},h("h3",{},"Ambientes (planta)"),h("p",{},"Monte a sala parede por parede: digite a medida e toque na seta para onde a parede vai. Depois coloque portas, janelas e o que tiver na parede. A distância de cada item é medida a partir do começo da parede, no sentido em que você desenhou (o ponto vermelho é o começo da parede A).")),novo));
   if(!lst.length){wrap.append(h("div",{class:"amb-vazio"},"Nenhum ambiente ainda. Toque em Novo ambiente."));return;}
   wrap.append(h("div",{class:"amb-tabs"},lst.map((a,i)=>h("button",{type:"button",class:"rpill","aria-pressed":i===ambSel?"true":"false",onclick:()=>{ambSel=i;parSel=null;pintar();}},a.nome||("Ambiente "+(i+1))))));
   const a=lst[ambSel];a.paredes=a.paredes||[];a.elementos=a.elementos||[];
   const card=h("div",{class:"amb-card"});wrap.append(card);
   // desenho + resumo
-  const desenho=h("div",{class:"amb-svg"});const resumo=h("div",{class:"amb-resumo"});
+  const desenho=h("div",{class:"amb-svg"});const resumo=h("div",{class:"amb-resumo"});const legItens=h("div",{class:"amb-itens"});
   const marcarLista=()=>{wrap.querySelectorAll(".amb-par").forEach((row,i)=>row.classList.toggle("sel",i===parSel));};
   // ---- ferramentas de desenho com o dedo ----
   a.medidas=a.medidas||[];a.tracos=a.tracos||[];
@@ -1225,6 +1284,7 @@ function blocoAmbientes(c){
    toast("Parede "+letra(parSel)+" selecionada");});
   const redesenhar=()=>{desenho.innerHTML=svgAmb(a,palTela(),640,440,{sel:parSel,hit:true,view:vFix||undefined,out:ultView,extra:pv});const G=geoAmb(a);resumo.innerHTML="";
    const pe=numBR(a.pe);
+   const itT=itensAmbTexto(a);legItens.innerHTML="";if(itT.length)legItens.append(...itT.map(t=>h("div",{class:"amb-it"},h("i",{style:"background:"+t.cor},t.marca),h("span",{},t.txt))));
    resumo.append(h("span",{},"Perímetro ",h("b",{},fmtM(G.perim)+" m")));
    if(G.fechado){resumo.append(h("span",{class:"ok"},"Fechado ✓"),h("span",{},"Área ",h("b",{},fmtM(G.area)+" m²")));if(pe)resumo.append(h("span",{},"Volume ",h("b",{},fmtM(G.area*pe)+" m³")));}
    else if(a.paredes.length&&G.segs.some(g=>g.len)){const P=planoFechar(a);
@@ -1245,7 +1305,7 @@ function blocoAmbientes(c){
   // observações do ambiente (ao lado do desenho no computador, embaixo no celular)
   const obsA=h("textarea",{class:"amb-obs",placeholder:"Ex.: parede B com infiltração; ar-condicionado sem dreno; pé-direito menor perto da porta…"});obsA.value=a.obs||"";
   obsA.oninput=()=>{a.obs=obsA.value;agendarSalvar();};
-  card.append(h("div",{class:"amb-vis"},h("div",{class:"amb-vis-d"},ferBar,desenho,resumo),h("label",{class:"f amb-vis-o"},h("span",{},"Observações do ambiente"),obsA)));
+  card.append(h("div",{class:"amb-vis"},h("div",{class:"amb-vis-d"},ferBar,desenho,legItens,resumo),h("label",{class:"f amb-vis-o"},h("span",{},"Observações do ambiente"),obsA)));
   // paredes
   const lp=h("div",{class:"amb-lista"});
   a.paredes.forEach((p,i)=>{
@@ -1254,13 +1314,29 @@ function blocoAmbientes(c){
    if(p.fecha){L.readOnly=true;L.title="Calculado: vai em linha reta até o começo da parede A";}
    L.oninput=()=>{p.len=L.value;agendarSalvar();redesenhar();};
    L.addEventListener("focus",()=>{if(parSel!==i){parSel=i;redesenhar();marcarLista();}});
-   const vira=p.fecha?h("span",{class:"amb-inicio"},"diagonal até o início"):i===0?h("span",{class:"amb-inicio"},"início"):h("div",{class:"seg amb-vira"},
-    ...[["e","↰","Esquerda"],["d","↱","Direita"]].map(([v,ic,t])=>h("button",{type:"button","aria-pressed":(p.vira||"d")===v?"true":"false","aria-label":"Virar à "+t.toLowerCase(),onclick:()=>{p.vira=v;agendarSalvar();pintar();}},v==="e"?ic+" ":"",h("span",{class:"vira-tx"},t),v==="d"?" "+ic:"")));
+   let vira;
+   if(p.fecha)vira=h("span",{class:"amb-inicio"},"diagonal até o início");
+   else{const sg=Gp.segs[i];const atual=normAng(sg?sg.hd:(p.dir!=null?p.dir:0));
+    const sel=h("select",{class:"amb-dir","aria-label":"Para onde vai a parede "+letra(i)});
+    let achou=false;DIRS.forEach(([g,ic,t,curto])=>{const op=h("option",{value:g},ic+"  "+curto);if(g===atual){op.selected=true;achou=true;}sel.append(op);});
+    if(!achou){const op=h("option",{value:atual},"∠ "+atual+"°");op.selected=true;sel.prepend(op);}
+    sel.onchange=()=>{guardar();fixarDirecoes(a);p.dir=+sel.value;agendarSalvar();pintar();};
+    vira=sel;}
    lp.append(h("div",{class:"amb-par"},h("b",{class:"amb-let"},letra(i)),vira,h("div",{class:"amb-len"},L,h("span",{},"m")),
     h("button",{type:"button",class:"obs-del","aria-label":"Remover parede "+letra(i),onclick:()=>{a.paredes.splice(i,1);a.elementos=a.elementos.filter(e=>e.parede!==i).map(e=>Object.assign(e,{parede:e.parede>i?e.parede-1:e.parede}));agendarSalvar();pintar();}},"×")));
   });
-  const addP=h("button",{type:"button",class:"btn",onclick:()=>{a.paredes.push({len:"",vira:"d"});agendarSalvar();pintar();setTimeout(()=>{const ins=wrap.querySelectorAll(".amb-par input");ins.length&&ins[ins.length-1].focus();},0);}},ico("plus"),"Parede "+letra(a.paredes.length));
-  card.append(h("h4",{},"Paredes"),lp,addP);
+  const medN=h("input",{type:"text",inputmode:"numeric","data-m":"1",class:"amb-pad-m",placeholder:"0,00","aria-label":"Medida da parede "+letra(a.paredes.length)});
+  const criar=g=>{const L=numBR(medN.value);if(!L){toast("Digite a medida no meio e depois toque na seta.");medN.focus();return;}
+   guardar();a.paredes.push({len:fmtM(L),dir:g});parSel=null;agendarSalvar();pintar();
+   toast("Parede "+letra(a.paredes.length-1)+": "+fmtM(L)+" m "+DIRS.find(d=>d[0]===g)[2].toLowerCase());
+   setTimeout(()=>{const m=wrap.querySelector(".amb-pad-m");if(m)m.focus({preventScroll:true});},0);};
+  medN.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();}});
+  const seta=i=>{const [g,ic,t]=DIRS[i];return h("button",{type:"button",class:"amb-pad-b","aria-label":"Criar parede "+t.toLowerCase(),title:t,onclick:()=>criar(g)},ic);};
+  // posições da grade 3×3: ↖ ↑ ↗ / ← [medida] → / ↙ ↓ ↘
+  const pad=h("div",{class:"amb-pad"},seta(7),seta(0),seta(1),seta(6),h("label",{class:"amb-pad-c"},medN,h("span",{},"metros")),seta(2),seta(5),seta(4),seta(3));
+  const ini=a.paredes.length?"A nova parede começa onde termina a parede "+letra(a.paredes.length-1)+".":"A primeira parede começa no ponto vermelho.";
+  card.append(h("h4",{},"Paredes"),lp,
+   h("div",{class:"amb-nova"},pad,h("div",{class:"amb-nova-t"},h("strong",{},"Nova parede "+letra(a.paredes.length)),h("p",{},"1. Digite a medida no meio."),h("p",{},"2. Toque na seta para onde a parede vai."),h("p",{class:"dica"},ini))));
   // elementos
   const le=h("div",{class:"amb-lista"});
   a.elementos.forEach((el,k)=>{
@@ -1305,7 +1381,9 @@ function planoFechar(a){
  else if(al>0){passos.push({tipo:"estender",i:n-1,mais:al});passos.push({tipo:"nova",vira:pe>0?"d":"e",len:Math.abs(pe)});}
  else{const v1=pe>0?"d":"e";passos.push({tipo:"nova",vira:v1,len:Math.abs(pe)});passos.push({tipo:"nova",vira:v1,len:Math.abs(al)});}
  // texto explicando
- let k=n;const txt=passos.map(p=>p.tipo==="estender"?"aumentar a parede "+letra(p.i)+" em "+fmtM(p.mais)+" m (fica com "+fmtM(numBR(a.paredes[p.i].len)+p.mais)+" m)":"criar a parede "+letra(k++)+" com "+fmtM(p.len)+" m virando à "+(p.vira==="d"?"direita":"esquerda"));
+ let k=n,hdT=G.hd;const nomeDir=g=>{const d=DIRS.find(x=>x[0]===normAng(g));return d?d[1]+" "+d[2].toLowerCase():"";};
+ const txt=passos.map(p=>{if(p.tipo==="estender")return "aumentar a parede "+letra(p.i)+" em "+fmtM(p.mais)+" m (fica com "+fmtM(numBR(a.paredes[p.i].len)+p.mais)+" m)";
+  hdT+=p.vira==="d"?90:-90;return "criar a parede "+letra(k++)+" com "+fmtM(p.len)+" m "+nomeDir(hdT);});
  return {passos,texto:"Para fechar: "+txt.join(" e ")+"."};
 }
 function fecharAmb(a){
@@ -1671,7 +1749,8 @@ function enterAvanca(root){
 function atualizarProgresso(){
  if(!cur)return;const p=progresso(cur);
  const pb=$("#pbar");if(pb)pb.style.width=p.p+"%";const pc=$("#pct");if(pc)pc.textContent=p.f+"/"+p.n+" · "+p.p+"%";
- SECOES.forEach(s=>{const f=s.itens.filter(i=>cur.itens[i.id]&&cur.itens[i.id].s).length;const t=s.itens.length;
+ SECOES.forEach(s=>{if(s.semLista){const nf=((cur.itens||{}).med_fotos||{}).fotos;const b=document.querySelector('[data-cnt="'+s.id+'"]');if(b){b.textContent=(nf&&nf.length)||"";b.parentNode.classList.remove("done");}return;}
+  const f=s.itens.filter(i=>cur.itens[i.id]&&cur.itens[i.id].s).length;const t=s.itens.length;
   const e=document.querySelector('[data-scnt="'+s.id+'"]');if(e)e.textContent=f+"/"+t;
   const b=document.querySelector('[data-cnt="'+s.id+'"]');if(b){b.textContent=f+"/"+t;b.parentNode.classList.toggle("done",f===t);}});
  const dok=!!(cur.cliente&&cur.endereco);const bd=document.querySelector('[data-cnt="dados"]');if(bd){bd.textContent=dok?"✓":"";bd.parentNode.classList.toggle("done",dok);}
@@ -1752,9 +1831,7 @@ async function gerarPDF(btn,alvo){
    const lx=M+wImg+4,lw=larg-wImg-4;doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...ink);
    const medA=(a.medidas||[]).map(q=>fmtM(Math.hypot(q.x2-q.x1,q.y2-q.y1))+" m");
    const linhasA=(medA.length?["MEDIDAS: "+medA.join(" · ")," "]:[]).concat(["PAREDES:"]).concat(G.segs.map((g,i)=>letra(i)+" = "+fmtM(g.len)+" m"+(g.diag?" (diagonal)":"")));
-   if((a.elementos||[]).length){linhasA.push(" ","ITENS:");a.elementos.forEach(el=>{const T=ELEM[el.tipo]||ELEM.outro;
-    const lgP=numBR(el.larg)||(T.abre?numBR(T.larg):0),alP=numBR(el.alt);
-    linhasA.push(T.n+(lgP||alP?" "+[lgP?fmtM(lgP):"",alP?fmtM(alP):""].filter(Boolean).join(" × ")+" m":"")+" – parede "+letra(el.parede|0)+", a "+fmtM(numBR(el.pos))+" m do canto "+cantoIni(a,el.parede|0)+(String(el.obs||"").trim()?" ("+el.obs.trim()+")":""));});}
+   if((a.elementos||[]).length){linhasA.push(" ","ITENS:");itensAmbTexto(a).forEach(t=>linhasA.push("("+t.marca+") "+t.txt));}
    let ly=yA+11;linhasA.forEach(t=>{doc.splitTextToSize(t,lw).forEach(tt=>{if(ly<yA+7+altImg){doc.text(tt,lx,ly);ly+=3.4;}});});
    let yO=yA+7+altImg;
    if(String(a.obs||"").trim()){yO+=4;doc.setFont("helvetica","bold");doc.setFontSize(7.5);doc.text("OBSERVAÇÕES DO AMBIENTE:",M,yO);yO+=3.6;doc.setFont("helvetica","normal");
@@ -1778,9 +1855,6 @@ async function gerarPDF(btn,alvo){
    linhasP.forEach(t=>doc.splitTextToSize(t,larg).forEach(tt=>{if(yL>285){doc.addPage();yL=16;}doc.text(tt,M,yL);yL+=3.6;}));
    doc.lastAutoTable.finalY=yL;
   }
-  const m=c.mat||{};const matTxt=k=>(m[k]||[]).map(cod=>cod+" – "+(MAT[k].o.find(x=>x[0]===cod)||["",""])[1]).join("\n");
-  const colMat=["piso","parede","teto"].filter(k=>(m[k]||[]).length);
-  if(colMat.length)doc.autoTable(Object.assign({},base,{startY:proxY(),head:[colMat.map(k=>MAT[k].t)],body:[colMat.map(matTxt)]}));
   if(c.croqui){
    let yc=doc.lastAutoTable.finalY+6;const cw2=W-2*M;let ch=cw2*3/4;
    try{const pr=doc.getImageProperties(c.croqui);ch=cw2*pr.height/pr.width;}catch(err){}
@@ -1796,6 +1870,9 @@ async function gerarPDF(btn,alvo){
    doc.setFont("helvetica","normal");doc.setTextColor(...ink);
    doc.lastAutoTable.finalY=yc+6+ch;
   }
+  const m=c.mat||{};const matTxt=k=>(m[k]||[]).map(cod=>cod+" – "+(MAT[k].o.find(x=>x[0]===cod)||["",""])[1]).join("\n");
+  const colMat=["piso","parede","teto"].filter(k=>(m[k]||[]).length);
+  if(colMat.length)doc.autoTable(Object.assign({},base,{startY:proxY(),head:[colMat.map(k=>MAT[k].t)],body:[colMat.map(matTxt)]}));
   if(tem(c.obsGeral))doc.autoTable(Object.assign({},base,{startY:proxY(),head:[["Observações gerais"]],body:[[c.obsGeral]]}));
   let y=doc.lastAutoTable.finalY+8;if(y>250){doc.addPage();y=20;}
   const colW=(W-2*M-10)/2;
@@ -1807,7 +1884,7 @@ async function gerarPDF(btn,alvo){
   });
   // anexo de fotos
   const fotos=[];
-  const todosPdf=[];SECOES.forEach(s=>{s.itens.forEach(it=>todosPdf.push(Object.assign({},it,{secao:s})));((c.custom||{})[s.id]||[]).forEach(ci=>todosPdf.push({id:ci.id,label:ci.label,secao:s}));});
+  const todosPdf=[];SECOES.forEach(s=>{if(s.id==="medicoes")todosPdf.push(Object.assign({},MED_FOTOS,{secao:s}));s.itens.forEach(it=>todosPdf.push(Object.assign({},it,{secao:s})));((c.custom||{})[s.id]||[]).forEach(ci=>todosPdf.push({id:ci.id,label:ci.label,secao:s}));});
   todosPdf.forEach(it=>{const d=c.itens[it.id];(d&&d.fotos||[]).forEach((f,i)=>fotos.push({it,f,i}));});
   if(fotos.length){
    doc.addPage();doc.setFont("helvetica","bold");doc.setFontSize(13);doc.setTextColor(...ink);doc.text("ANEXO – REGISTRO FOTOGRÁFICO",M,16);
